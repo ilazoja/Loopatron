@@ -23,6 +23,7 @@ from Remixatron import InfiniteJukebox
 from pygame import mixer
 
 from gui_utils import *
+from jukebox_controller import JukeboxController
 
 SOUND_FINISHED = pygame.locals.USEREVENT + 1
 
@@ -282,7 +283,7 @@ if __name__ == "__main__":
     # sound too slow/fast/awful
 
     mixer.init(frequency=jukebox.sample_rate)
-    channel = mixer.Channel(0)
+    #channel = mixer.Channel(0)
 
     # pygame's event handling functions won't work unless the
     # display module has been initialized -- even though we
@@ -296,7 +297,7 @@ if __name__ == "__main__":
     # register the event type we want fired when a sound buffer
     # finishes playing
 
-    channel.set_endevent(SOUND_FINISHED)
+    #channel.set_endevent(SOUND_FINISHED)
 
     # queue and start playing the first event in the play vector. This is basic
     # audio double buffering that will reduce choppy audio from impercise timings. The
@@ -316,9 +317,7 @@ if __name__ == "__main__":
     clock = pygame.time.Clock()
     done = False
 
-    beat_num = 0
-    snd = mixer.Sound(buffer=jukebox.beats[beat_num]['buffer'])
-    channel.queue(snd)
+    jukebox_controller = JukeboxController(window, jukebox)
 
     click = False
     is_paused = False
@@ -330,19 +329,8 @@ if __name__ == "__main__":
         draw_text('Infinite Jukebox', font, (255, 255, 255), window, 20, 20 )
 
         mx, my = pygame.mouse.get_pos()
+        jukebox_controller.play_button(click, mx, my)
 
-        play_button = pygame.Rect(50, 100, 50, 50)
-        if play_button.collidepoint((mx, my)):
-            if click:
-                if not is_paused:
-                    channel.pause()
-                    is_paused = True
-                else:
-                    mixer.unpause()
-                    is_paused = False
-
-
-        pygame.draw.rect(window, (255, 0, 0), play_button)
 
         click = False
         # Handle user-input
@@ -350,10 +338,7 @@ if __name__ == "__main__":
             if (event.type == pygame.QUIT):
                 done = True
             elif (event.type == SOUND_FINISHED):
-                beat_num+=1
-                # Channel2 sound ended, start another!
-                snd = mixer.Sound(buffer=jukebox.beats[beat_num]['buffer'])
-                channel.play(snd)
+                jukebox_controller.on_sound_finished()
                 print("Sound ended")
             if event.type == MOUSEBUTTONDOWN:
                 if event.button == 1:
