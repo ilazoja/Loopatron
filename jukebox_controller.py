@@ -34,11 +34,12 @@ class JukeboxController:
 
     def on_sound_finished(self):
 
+        # If on selected beat, and there is a selected jump beat, go to selected jump beat, otherwise increment by 1
         if self.selected_jump_beat_id >= 0 and self.beat_id == self.selected_beat_id:
             self.beat_id = self.selected_jump_beat_id
         else:
             self.beat_id += 1
-            if self.beat_id >= len(self.jukebox.beats):
+            if self.beat_id >= len(self.jukebox.beats): # if no beats left (i.e. song finished
                 self.beat_id = 0
 
         self.scroll_index = BAR_X + (float(self.jukebox.beats[self.beat_id]['start_index']) / float(self.total_indices)) * BAR_WIDTH
@@ -48,6 +49,7 @@ class JukeboxController:
 
     def play_button(self, click, mx, my):
 
+        ## Play / pause
         play_button_box = pygame.Rect(WINDOW_WIDTH / 2 - BUTTON_WIDTH / 2, WINDOW_HEIGHT - BUTTON_WIDTH - 10, BUTTON_WIDTH, BUTTON_WIDTH)
         if play_button_box.collidepoint((mx, my)):
             if click == (1, 0, 0):
@@ -79,24 +81,22 @@ class JukeboxController:
                 self.selected_jump_beat_num = 0
                 self.selected_jump_beat_id = -1
 
-                #TODO: Play start of beat
-
         pygame.draw.rect(self.window, Color.GRAY.value, music_slider_bar)
-
-        # TODO: Draw segment borders in white, highlight beats with a earlier loop in light blue
 
         current_jump_beat_num = 0
         current_segment = -1
         for beat in self.jukebox.beats:
             x_line = BAR_X + (float(beat['start_index']) / float(self.total_indices)) * BAR_WIDTH
 
-            if self.scroll_index >= beat['start_index'] and self.scroll_index < beat['stop_index']:
+            ## Adjust scroll bar so that it is at start of beat
+            if self.scroll_index >= beat['start_index'] and self.scroll_index < beat['stop_index']: # find beat which index belongs to
                 self.scroll_index = BAR_X + (float(beat['start_index']) / float(self.total_indices)) * BAR_WIDTH
 
+                ## If start indices doesn't match, i.e. the scroll bar was moved, set beat id to new beat
                 if beat['start_index'] != self.jukebox.beats[self.beat_id]['start_index']:
                     self.beat_id = beat['id'] - 1
 
-
+            ## Draw segment borders in white
             if beat['segment'] > current_segment:
                 current_segment = beat['segment']
 
@@ -107,14 +107,15 @@ class JukeboxController:
             current_beat_color = None
             for jump_beat_id in beat['jump_candidates']:
 
-                if jump_beat_id < beat['id']: # if there is a jumping point to an earlier beat, draw line at start of beat
-                    current_beat_color = Color.LIGHT_BLUE.value
-                    if self.selected_index >= beat['start_index'] and self.selected_index < beat['stop_index']:
+                if jump_beat_id < beat['id']:
+                    current_beat_color = Color.LIGHT_BLUE.value # Highlight beats with a earlier loop in light blue
+                    if self.selected_index >= beat['start_index'] and self.selected_index < beat['stop_index']: # find beat which index belongs to
                         self.selected_beat_id = beat['id']
-                        current_beat_color = Color.FIREBRICK.value
+                        current_beat_color = Color.FIREBRICK.value # Highlight selected beat with ealier loop in red
 
                         x_jump_line = BAR_X + (float(self.jukebox.beats[jump_beat_id]['start_index']) / float(self.total_indices)) * BAR_WIDTH
 
+                        # Highlight selected jump beat in green, other ones in yellow
                         jump_beat_color = Color.YELLOW.value
                         if self.selected_jump_beat_num == current_jump_beat_num:
                             self.selected_jump_beat_id = jump_beat_id
@@ -145,3 +146,7 @@ class JukeboxController:
         # TODO: Display audio signal?
 
         # TODO: Export loop, automatically convert using LoopingAudioConverter
+
+        # TODO: Select songs
+
+        # Get rid of unneccessary remixatron
