@@ -27,13 +27,19 @@ class JukeboxController:
         self.scroll_index = BAR_X
         self.selected_index = 0
 
-        self.selected_jump_beat_index = 0
-        self.selected_jump_beat = -1
+        self.selected_jump_beat_num = 0
+        self.selected_jump_beat_id = -1
 
         self.debounce = False
 
     def on_sound_finished(self):
-        self.beat_id += 1
+
+        if self.selected_jump_beat_id >= 0 and self.beat_id == self.selected_beat_id:
+            self.beat_id = self.selected_jump_beat_id
+        else:
+            self.beat_id += 1
+            if self.beat_id >= len(self.jukebox.beats):
+                self.beat_id = 0
 
         self.scroll_index = BAR_X + (float(self.jukebox.beats[self.beat_id]['start_index']) / float(self.total_indices)) * BAR_WIDTH
         # Channel2 sound ended, start another!
@@ -69,8 +75,9 @@ class JukeboxController:
                 self.scroll_index = ((mx - BAR_X) / BAR_WIDTH) * float(self.total_indices) + self.jukebox.beats[0]['start_index']
             elif click == (0, 0, 1):
                 self.selected_index = ((mx - BAR_X) / BAR_WIDTH) * float(self.total_indices) + self.jukebox.beats[0]['start_index']
-                self.selected_jump_beat_index = 0
-                self.selected_jump_beat = -1
+                self.selected_beat_id = -1
+                self.selected_jump_beat_num = 0
+                self.selected_jump_beat_id = -1
 
                 #TODO: Play start of beat
 
@@ -78,7 +85,7 @@ class JukeboxController:
 
         # TODO: Draw segment borders in white, highlight beats with a earlier loop in light blue
 
-        current_jump_beat = 0
+        current_jump_beat_num = 0
         current_segment = -1
         for beat in self.jukebox.beats:
             x_line = BAR_X + (float(beat['start_index']) / float(self.total_indices)) * BAR_WIDTH
@@ -98,18 +105,19 @@ class JukeboxController:
                                   BAR_HEIGHT + 20])
 
             current_beat_color = None
-            for jump_index in beat['jump_candidates']:
+            for jump_beat_id in beat['jump_candidates']:
 
-                if jump_index < beat['id']: # if there is a jumping point to an earlier beat, draw line at start of beat
+                if jump_beat_id < beat['id']: # if there is a jumping point to an earlier beat, draw line at start of beat
                     current_beat_color = Color.LIGHT_BLUE.value
                     if self.selected_index >= beat['start_index'] and self.selected_index < beat['stop_index']:
+                        self.selected_beat_id = beat['id']
                         current_beat_color = Color.FIREBRICK.value
 
-                        x_jump_line = BAR_X + (float(self.jukebox.beats[jump_index]['start_index']) / float(self.total_indices)) * BAR_WIDTH
+                        x_jump_line = BAR_X + (float(self.jukebox.beats[jump_beat_id]['start_index']) / float(self.total_indices)) * BAR_WIDTH
 
                         jump_beat_color = Color.YELLOW.value
-                        if self.selected_jump_beat_index == current_jump_beat:
-                            self.selected_jump_beat = jump_index
+                        if self.selected_jump_beat_num == current_jump_beat_num:
+                            self.selected_jump_beat_id = jump_beat_id
                             jump_beat_color = Color.FOREST_GREEN.value
 
                         pygame.draw.rect(self.window, jump_beat_color,
@@ -117,7 +125,7 @@ class JukeboxController:
                                           WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT, SEGMENT_LINE_WIDTH,
                                           BAR_HEIGHT])
 
-                        current_jump_beat += 1
+                        current_jump_beat_num += 1
 
                 if current_beat_color:
                     pygame.draw.rect(self.window, current_beat_color,
