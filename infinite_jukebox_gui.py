@@ -304,14 +304,11 @@ if __name__ == "__main__":
     # goal is to always have one beat in queue to play as soon as the last one is done.
 
     # Window size
-    WINDOW_WIDTH = 1000
-    WINDOW_HEIGHT = 600
     WINDOW_SURFACE = pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE
     window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), WINDOW_SURFACE)
 
     font = pygame.font.SysFont(None, 20)
 
-    DARK_BLUE = (3, 5, 54)
 
     ### Main Loop
     clock = pygame.time.Clock()
@@ -319,20 +316,21 @@ if __name__ == "__main__":
 
     jukebox_controller = JukeboxController(window, jukebox)
 
-    click = False
     is_paused = False
 
     while not done:
         # Update the window, but not more than 60fps
-        window.fill(DARK_BLUE)
+        window.fill(Color.DARK_BLUE.value)
 
-        draw_text('Infinite Jukebox', font, (255, 255, 255), window, 20, 20 )
+        draw_text('Infinite Jukebox', font, Color.WHITE.value, window, 20, 20 )
 
         mx, my = pygame.mouse.get_pos()
+        click = pygame.mouse.get_pressed()
         jukebox_controller.play_button(click, mx, my)
+        jukebox_controller.music_slider(click, mx, my)
 
 
-        click = False
+
         # Handle user-input
         for event in pygame.event.get():
             if (event.type == pygame.QUIT):
@@ -340,10 +338,6 @@ if __name__ == "__main__":
             elif (event.type == SOUND_FINISHED):
                 jukebox_controller.on_sound_finished()
                 print("Sound ended")
-            if event.type == MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    click = True
-
 
         #pygame.display.flip()
         pygame.display.update()

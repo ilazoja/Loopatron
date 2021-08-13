@@ -2,6 +2,8 @@
 from pygame import mixer
 import pygame.locals
 
+from gui_utils import *
+
 SOUND_FINISHED = pygame.locals.USEREVENT + 1
 
 class JukeboxController:
@@ -21,6 +23,15 @@ class JukeboxController:
         self.is_paused = False
         self.beat_num = 0
 
+        self.total_indices = jukebox.beats[-1]['stop_index'] - jukebox.beats[0]['start_index']
+        self.x_scroll = BAR_X
+        self.selected_index = 0
+
+        self.selected_jump_beat_index = 0
+        self.selected_jump_beat = -1
+
+        self.debounce = False
+
     def on_sound_finished(self):
         self.beat_num += 1
         # Channel2 sound ended, start another!
@@ -28,17 +39,96 @@ class JukeboxController:
         self.channel.play(snd)
 
     def play_button(self, click, mx, my):
-        play_button = pygame.Rect(50, 100, 50, 50)
-        if play_button.collidepoint((mx, my)):
-            if click:
-                if not self.is_paused:
-                    self.channel.pause()
-                    self.is_paused = True
-                else:
-                    self.channel.unpause()
-                    self.is_paused = False
 
-        pygame.draw.rect(self.window, (255, 0, 0), play_button)
+        play_button_box = pygame.Rect(WINDOW_WIDTH / 2 - BUTTON_WIDTH / 2, WINDOW_HEIGHT - BUTTON_WIDTH - 10, BUTTON_WIDTH, BUTTON_WIDTH)
+        if play_button_box.collidepoint((mx, my)):
+            if click == (1, 0, 0):
+                if not self.debounce:
+                    if not self.is_paused:
+                        self.channel.pause()
+                        self.is_paused = True
+                    else:
+                        self.channel.unpause()
+                        self.is_paused = False
+                self.debounce = True
+            else:
+                self.debounce = False
 
-    def music_slider_button(self, click, mx, my, action = None):
-        pass
+        pygame.draw.rect(self.window, Color.RED.value, play_button_box)
+
+    def music_slider(self, click, mx, my, action = None):
+
+        bar_width = WINDOW_WIDTH - BAR_X*2
+
+        music_slider_bar = pygame.Rect(BAR_X, WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT, bar_width, BAR_HEIGHT)
+
+        ## Handle mouse
+        if music_slider_bar.collidepoint((mx, my)):
+            if click == (1, 0, 0):
+                self.x_scroll = mx
+            elif click == (0, 0, 1):
+                self.selected_index = ((mx - BAR_X) / bar_width) * float(self.total_indices) + self.jukebox.beats[0]['start_index']
+                self.selected_jump_beat_index = 0
+                self.selected_jump_beat = -1
+
+                #TODO: Play start of beat
+
+        pygame.draw.rect(self.window, Color.GRAY.value, music_slider_bar)
+
+        # TODO: Draw segment borders in white, highlight beats with a earlier loop in light blue
+
+        current_jump_beat = 0
+        current_segment = -1
+        for beat in self.jukebox.beats:
+            is_current_beat = False
+            x_line = BAR_X + (float(beat['start_index']) / float(self.total_indices)) * bar_width
+            if self.selected_index >= beat['start_index'] and self.selected_index < beat['stop_index']:
+                is_current_beat = True
+
+            if beat['segment'] > current_segment:
+                current_segment = beat['segment']
+
+                pygame.draw.rect(self.window, Color.WHITE.value,
+                                 [x_line - SEGMENT_LINE_WIDTH/2, WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10, SEGMENT_LINE_WIDTH,
+                                  BAR_HEIGHT + 20])
+
+            current_beat_color = None
+            for jump_index in beat['jump_candidates']:
+
+                if jump_index < beat['id']: # if there is a jumping point to an earlier beat, draw line at start of beat
+                    current_beat_color = Color.LIGHT_BLUE.value
+                    if is_current_beat:
+                        current_beat_color = Color.FIREBRICK.value
+
+                        x_jump_line = BAR_X + (float(self.jukebox.beats[jump_index]['start_index']) / float(self.total_indices)) * bar_width
+
+                        jump_beat_color = Color.YELLOW.value
+                        if self.selected_jump_beat_index == current_jump_beat:
+                            self.selected_jump_beat = jump_index
+                            jump_beat_color = Color.FOREST_GREEN.value
+
+                        pygame.draw.rect(self.window, jump_beat_color,
+                                         [x_jump_line - SEGMENT_LINE_WIDTH / 2,
+                                          WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT, SEGMENT_LINE_WIDTH,
+                                          BAR_HEIGHT])
+
+                        current_jump_beat += 1
+
+                if current_beat_color:
+                    pygame.draw.rect(self.window, current_beat_color,
+                             [x_line - SEGMENT_LINE_WIDTH / 2,
+                              WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT, SEGMENT_LINE_WIDTH,
+                              BAR_HEIGHT])
+
+
+
+
+
+        pygame.draw.rect(self.window, Color.BLACK.value, [self.x_scroll - SCROLL_WIDTH / 2, WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10, SCROLL_WIDTH, BAR_HEIGHT + 20])
+
+
+        # TODO: Right click, highlight a beat (maybe closest beat to the left) in red and beats to transition to in yellow, select beats using keypad, scrollwheel or arrow keys
+
+        # TODO: Display audio signal?
+
+        # TODO: Export loop, automatically convert using LoopingAudioConverter

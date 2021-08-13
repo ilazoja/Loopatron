@@ -61,6 +61,8 @@ class InfiniteJukebox(object):
                  playback can begin. This is only defined if you pass do_async=True in the
                  constructor.
 
+    start_index: the start index of the original track before trimming (i.e. leading silence is before this start index)
+
        duration: the duration (in seconds) of the track after the leading and trailing silences
                  have been removed.
 
@@ -185,7 +187,9 @@ class InfiniteJukebox(object):
         #
 
         y, sr = librosa.core.load(self.__filename, mono=False, sr=None)
-        y, _ = librosa.effects.trim(y)
+        y, index = librosa.effects.trim(y)
+
+        self.start_index = index[0]
 
         self.duration = librosa.core.get_duration(y,sr)
         self.raw_audio = (y * np.iinfo(np.int16).max).astype(np.int16).T.copy(order='C')
