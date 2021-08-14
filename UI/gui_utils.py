@@ -1,5 +1,7 @@
 import pygame
 import sys
+import tkinter
+import tkinter.filedialog
 
 from pygame.locals import *
 from enum import Enum
@@ -31,8 +33,30 @@ class Color(Enum):
     BLACK = (0, 0, 0)
     YELLOW = (255, 255, 0)
 
+def prompt_file():
+    """Create a Tk file dialog and cleanup when finished"""
+    top = tkinter.Tk()
+    top.withdraw()  # hide window
+    file_name = tkinter.filedialog.askopenfilename(parent=top)
+    top.destroy()
+    return file_name
+
+
 def draw_text(text, font, color, surface, x, y):
     textobj = font.render(text, 1, color)
     textrect = textobj.get_rect()
     textrect.topleft = (x, y)
     surface.blit(textobj, textrect)
+
+def open_button(window, click, mx, my):
+
+    ## Open a new file
+    open_button_box = pygame.Rect(100, 20, 100, 50)
+    pygame.draw.rect(window, Color.GRAY.value, open_button_box)
+    if open_button_box.collidepoint((mx, my)):
+        if click == (1, 0, 0):
+            return prompt_file()
+
+    return None
+
+

@@ -1,8 +1,8 @@
-
+import os
 from pygame import mixer
 import pygame.locals
 
-from gui_utils import *
+from UI.gui_utils import *
 
 SOUND_FINISHED = pygame.locals.USEREVENT + 1
 
@@ -15,6 +15,8 @@ class JukeboxController:
         #mixer.init(frequency=jukebox.sample_rate)
         self.channel = mixer.Channel(0)
 
+        # register the event type we want fired when a sound buffer
+        # finishes playing
         self.channel.set_endevent(SOUND_FINISHED)
 
         snd = mixer.Sound(buffer=jukebox.beats[0]['buffer'])
@@ -31,6 +33,81 @@ class JukeboxController:
         self.selected_jump_beat_id = -1
 
         self.debounce = False
+
+        self.is_init = True
+
+    def reinit(self, jukebox):
+        self.jukebox = jukebox
+
+        # mixer.init(frequency=jukebox.sample_rate)
+        self.channel = mixer.Channel(0)
+
+        # register the event type we want fired when a sound buffer
+        # finishes playing
+        self.channel.set_endevent(SOUND_FINISHED)
+
+        snd = mixer.Sound(buffer=jukebox.beats[0]['buffer'])
+        self.channel.queue(snd)
+
+        self.is_paused = False
+        self.beat_id = 0
+
+        self.total_indices = jukebox.beats[-1]['stop_index'] - jukebox.beats[0]['start_index']
+        self.scroll_index = BAR_X
+        self.selected_index = 0
+
+        self.selected_jump_beat_num = 0
+        self.selected_jump_beat_id = -1
+
+        self.debounce = False
+
+    def get_verbose_info(self, verbose):
+        """Show statistics about the song and the analysis"""
+
+        info = """
+        filename: %s
+        duration: %02d:%02d:%02d
+           beats: %d
+           tempo: %d bpm
+        clusters: %d
+        segments: %d
+      samplerate: %d
+        """
+
+        (minutes, seconds) = divmod(round(self.jukebox.duration), 60)
+        (hours, minutes) = divmod(minutes, 60)
+
+        verbose_info = info % (self.jukebox.filename, hours, minutes, seconds,
+                               len(self.jukebox.beats), int(round(self.jukebox.tempo)), self.jukebox.clusters, self.jukebox.segments,
+                               self.jukebox.sample_rate)
+
+        segment_map = ''
+        cluster_map = ''
+
+        segment_chars = '#-'
+        cluster_chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890-=,.<>/?;:!@#$%^&*()_+'
+
+        for b in self.jukebox.beats:
+            segment_map += segment_chars[b['segment'] % 2]
+            cluster_map += cluster_chars[b['cluster']]
+
+        verbose_info += "\n" + segment_map + "\n\n"
+
+        if verbose:
+            verbose_info += cluster_map + "\n\n"
+
+        verbose_info += self.jukebox._extra_diag
+
+        return verbose_info
+
+    def write_points_to_file(self, lac_dir = ""):
+        if self.selected_jump_beat_id >= 0 and self.selected_beat_id >= 0:
+            start_offset = self.jukebox.beats[self.selected_jump_beat_id]['start_index']
+            loop_offset = self.jukebox.beats[self.selected_beat_id]['stop_index']
+            with open(os.path.join(lac_dir, "loop.txt"), "a") as output:
+                output.write("\n%d " % (self.jukebox.start_index + start_offset))
+                output.write("%d " % (self.jukebox.start_index + loop_offset))
+                output.write(os.path.basename(self.jukebox.filename))
 
     def on_sound_finished(self):
 
@@ -67,7 +144,6 @@ class JukeboxController:
         pygame.draw.rect(self.window, Color.RED.value, play_button_box)
 
     def music_slider(self, click, mx, my, action = None):
-
 
         music_slider_bar = pygame.Rect(BAR_X, WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT, BAR_WIDTH, BAR_HEIGHT)
 
@@ -149,4 +225,4 @@ class JukeboxController:
 
         # TODO: Select songs
 
-        # Get rid of unneccessary remixatron
+        # TODO: Volume slider
