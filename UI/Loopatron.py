@@ -23,7 +23,6 @@ from jukebox_controller import JukeboxController
 
 SOUND_FINISHED = pygame.locals.USEREVENT + 1
 
-looping_audio_converter_dir = "C:/Users/Ilir/Documents/Games/Brawl/Project+ Modding/Music/LoopingAudioConverter-2.4"
 
 def process_args():
 
@@ -100,8 +99,8 @@ def initialize_jukebox(filename, do_async = False):
 
 def play_loop(filename):
     # do the clustering. Run synchronously. Post status messages to MyCallback()
-    jukebox = initialize_jukebox(filename)
-    jukebox_controller = JukeboxController(window, jukebox)
+    #jukebox = initialize_jukebox(filename)
+    #jukebox_controller = JukeboxController(window, jukebox)
 
     font = pygame.font.SysFont(None, 20)
 
@@ -109,45 +108,70 @@ def play_loop(filename):
     clock = pygame.time.Clock()
     done = False
 
+    is_init = False
+
     while not done:
         # Update the window, but not more than 60fps
-        jukebox_controller.window.fill(Color.DARK_BLUE.value)
-        draw_text(f'Loopatron - {os.path.basename(filename)}', font, Color.WHITE.value, jukebox_controller.window, 20, 20)
+        window.fill(Color.DARK_BLUE.value)
+        draw_text(f'Loopatron - {os.path.basename(filename)}', font, Color.WHITE.value, window, 20, 20)
 
-        #if jukebox.play_ready and jukebox.play_ready.is_set():
-        #    mixer.init(frequency=jukebox.sample_rate)
-        #    jukebox_controller.reinit(jukebox)
+        if not is_init:
+            pygame.display.set_caption("Loopatron - Loading...")
+            draw_text(f'Loading...', font, Color.GREEN.value, window, 20, 40)
+            pygame.display.update()
+            jukebox = initialize_jukebox(filename)
+            jukebox_controller = JukeboxController(window, font, jukebox)
+            is_init = True
+            timestamp = None
+        else:
+            pygame.display.set_caption(f'Loopatron - {os.path.basename(filename)}')
+            mx, my = pygame.mouse.get_pos()
+            click = pygame.mouse.get_pressed()
 
-        #if jukebox_controller.is_init:
+            jukebox_controller.play_button(click, mx, my)
+            jukebox_controller.music_slider(click, mx, my)
 
-        mx, my = pygame.mouse.get_pos()
-        click = pygame.mouse.get_pressed()
+            button_response = jukebox_controller.export_button(click, mx, my)
+            if button_response:
+                timestamp = button_response
 
-        jukebox_controller.play_button(click, mx, my)
-        jukebox_controller.music_slider(click, mx, my)
+            button_response = jukebox_controller.open_button(click, mx, my)
+            if button_response:
+                filename = button_response
+                is_init = False
+                #jukebox = initialize_jukebox(filename, do_async=False)
+                #jukebox_controller.initialize_controller(jukebox)
 
-        # Handle user-input
-        for event in pygame.event.get():
-            if (event.type == pygame.QUIT):
-                done = True
-            elif (event.type == SOUND_FINISHED):
-                jukebox_controller.on_sound_finished()
-                #print("Sound ended")
-            elif (event.type == pygame.KEYUP):
-                if (event.key == pygame.K_e):
-                    jukebox_controller.write_points_to_file(looping_audio_converter_dir)
-                #if (event.key == pygame.K_o):
-                    #filename = prompt_file()
-                    #jukebox = initialize_jukebox(filename, do_async=True)
-                    #jukebox_controller.is_init = False
+            # Handle user-input
+            for event in pygame.event.get():
+                if (event.type == pygame.QUIT):
+                    done = True
+                elif (event.type == SOUND_FINISHED):
+                    jukebox_controller.on_sound_finished()
+                    #print("Sound ended")
+                elif (event.type == pygame.KEYUP):
+                    if (event.key == pygame.K_e):
+                        timestamp = jukebox_controller.export_brstm()
+                        #jukebox_controller.write_points_to_file(LOOPING_AUDIO_CONVERTER_DIR)
+                        #timestamp = get_timestamp()
+                    if (event.key == pygame.K_o):
+                        filename = jukebox_controller.select_file()
+                        #jukebox_controller.channel.pause() # Pause before opening prompt otherwise playback will speed up
+                        #filename = prompt_file()
+                        is_init = False
 
-        #filename = open_button(jukebox_controller.window, click, mx, my)
-        #if filename:
-            #jukebox = initialize_jukebox(filename, do_async=True)
+                        #jukebox = initialize_jukebox(filename, do_async=False)
+                        #jukebox_controller.initialize_controller(jukebox)
+
+            if timestamp:
+                draw_text(f'Exported to brstm at {timestamp}', font, Color.GREEN.value, window, 20, 40)
+
+            # pygame.display.flip()
+            pygame.display.update()
 
 
-        # pygame.display.flip()
-        pygame.display.update()
+
+
 
         # Clamp FPS
         clock.tick_busy_loop(60)

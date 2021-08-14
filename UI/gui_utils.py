@@ -2,11 +2,13 @@ import pygame
 import sys
 import tkinter
 import tkinter.filedialog
+from datetime import datetime
 
 from pygame.locals import *
 from enum import Enum
 
-is_paused = False
+LOOPING_AUDIO_CONVERTER_DIR = "C:/Users/Ilir/Documents/Games/Brawl/Project+ Modding/Music/LoopingAudioConverter-2.4"
+
 
 WINDOW_WIDTH = 1000
 WINDOW_HEIGHT = 600
@@ -41,22 +43,13 @@ def prompt_file():
     top.destroy()
     return file_name
 
-
 def draw_text(text, font, color, surface, x, y):
     textobj = font.render(text, 1, color)
     textrect = textobj.get_rect()
     textrect.topleft = (x, y)
     surface.blit(textobj, textrect)
 
-def open_button(window, click, mx, my):
-
-    ## Open a new file
-    open_button_box = pygame.Rect(100, 20, 100, 50)
-    pygame.draw.rect(window, Color.GRAY.value, open_button_box)
-    if open_button_box.collidepoint((mx, my)):
-        if click == (1, 0, 0):
-            return prompt_file()
-
-    return None
+def get_timestamp():
+    return datetime.now().strftime("%H:%M:%S")
 
 
