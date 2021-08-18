@@ -108,7 +108,15 @@ def play_loop(filename):
     clock = pygame.time.Clock()
     done = False
 
-    is_init = False
+    pygame.display.set_caption("Loopatron - Loading...")
+    window.fill(Color.DARK_BLUE.value)
+    draw_text(f'Loopatron - {os.path.basename(filename)}', font, Color.WHITE.value, window, 20, 20)
+    draw_text(f'Loading...', font, Color.GREEN.value, window, 20, 40)
+    pygame.display.update()
+    jukebox = initialize_jukebox(filename)
+    jukebox_controller = JukeboxController(window, font, jukebox)
+    timestamp = None
+    is_init = True
 
     while not done:
         # Update the window, but not more than 60fps
@@ -120,7 +128,7 @@ def play_loop(filename):
             draw_text(f'Loading...', font, Color.GREEN.value, window, 20, 40)
             pygame.display.update()
             jukebox = initialize_jukebox(filename)
-            jukebox_controller = JukeboxController(window, font, jukebox)
+            jukebox_controller.initialize_controller(jukebox)
             is_init = True
             timestamp = None
         else:
@@ -130,6 +138,8 @@ def play_loop(filename):
 
             jukebox_controller.play_button(click, mx, my)
             jukebox_controller.back_button(click, mx, my)
+            jukebox_controller.jump_buttons(click, mx, my)
+            jukebox_controller.volume_slider(click, mx, my)
             jukebox_controller.music_slider(click, mx, my)
 
             button_response = jukebox_controller.export_button(click, mx, my)
@@ -153,12 +163,20 @@ def play_loop(filename):
                 elif (event.type == pygame.KEYUP):
                     if (event.key == pygame.K_SPACE):
                         jukebox_controller.play_pause()
+                    elif (event.key == pygame.K_b):
+                        jukebox_controller.set_beat_to_last_selected()
+                    elif (event.key == pygame.K_UP):
+                        jukebox_controller.set_volume(jukebox_controller.volume + 0.05)
+                    elif (event.key == pygame.K_DOWN):
+                        jukebox_controller.set_volume(jukebox_controller.volume - 0.05)
+                    elif (event.key == pygame.K_LEFT):
+                        jukebox_controller.increment_jump_beat(-1)
+                    elif (event.key == pygame.K_RIGHT):
+                        jukebox_controller.increment_jump_beat(1)
                     elif (event.key == pygame.K_e):
                         timestamp = jukebox_controller.export_brstm()
                         #jukebox_controller.write_points_to_file(LOOPING_AUDIO_CONVERTER_DIR)
                         #timestamp = get_timestamp()
-                    elif (event.key == pygame.K_b):
-                        jukebox_controller.set_beat_to_last_selected()
                     elif (event.key == pygame.K_o):
                         filename = jukebox_controller.select_file()
                         #jukebox_controller.channel.pause() # Pause before opening prompt otherwise playback will speed up
