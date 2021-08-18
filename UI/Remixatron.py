@@ -384,10 +384,10 @@ class InfiniteJukebox(object):
 
         fade = len(info) - 1
 
-        for b in reversed(info):
-            if b['amplitude'] >= (.75 * max_amplitude):
-                fade = info.index(b)
-                break
+        #for b in reversed(info):
+        #    if b['amplitude'] >= (.75 * max_amplitude):
+        #        fade = info.index(b)
+        #        break
 
         # truncate the beats to [start:fade + 1]
         beats = info[self.__start_beat:fade + 1]
@@ -425,10 +425,10 @@ class InfiniteJukebox(object):
             #
             # THAT collection of beats contains our jump candidates
 
-            jump_candidates = [bx['id'] for bx in beats[loop_bounds_begin:] if
+            jump_candidates = [bx['id'] for bx in beats[loop_bounds_begin:beat['id']] if # only consider beats that are earlier
                                (bx['cluster'] == beats[beat['next']]['cluster']) and
                                (bx['is'] == beats[beat['next']]['is']) and
-                               (bx['id'] % 4 == beats[beat['next']]['id'] % 4) and
+                               #(bx['id'] % 4 == beats[beat['next']]['id'] % 4) and # removed as was limiting loop points
                                (bx['segment'] != beat['segment']) and
                                (bx['id'] != beat['next'])]
 

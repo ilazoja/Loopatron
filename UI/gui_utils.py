@@ -34,6 +34,7 @@ class Color(Enum):
     LIGHT_BLUE = (173,216,230)
     BLACK = (0, 0, 0)
     YELLOW = (255, 255, 0)
+    DARK_ORANGE = (255, 140, 0)
 
 def prompt_file():
     """Create a Tk file dialog and cleanup when finished"""
