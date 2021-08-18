@@ -372,12 +372,12 @@ class JukeboxController:
 
         # TODO: Export loop, automatically convert using LoopingAudioConverter
 
-        # TODO: Volume slider at bottom left
-
         # TODO: Manual set loop using shift left and right click? Maybe highlight same clusters as current selection when holding shift
 
         # TODO: Fix audio playback
 
         # TODO: Update status during loading
 
-        # TODO: Make more efficient (maybe multithread (multiprocessing) finding cluster points?)
+        # TODO: Make more efficient? (already included some multiprocessing)
+
+        # TODO: Report processing time elapsed

@@ -42,6 +42,13 @@ import numpy as np
 import sklearn.cluster
 import sklearn.metrics
 
+import multiprocessing
+import functools
+import time
+
+def smap(f):
+    return f()
+
 class InfiniteJukebox(object):
 
     """ Class to "infinitely" remix a song.
@@ -200,21 +207,50 @@ class InfiniteJukebox(object):
 
         y = librosa.core.to_mono(y)
 
-        self.__report_progress( .2, "computing pitch data..." )
+        self.__report_progress( .2, "computing pitch data and finding beats..." )
 
         # Compute the constant-q chromagram for the samples.
 
         BINS_PER_OCTAVE = 12 * 3
         N_OCTAVES = 7
 
-        cqt = librosa.cqt(y=y, sr=sr, bins_per_octave=BINS_PER_OCTAVE, n_bins=N_OCTAVES * BINS_PER_OCTAVE)
+        start = time.time()
+
+
+
+        if multiprocessing.cpu_count() > 1:
+            f_cqt = functools.partial(librosa.cqt, y=y, sr=sr, bins_per_octave=BINS_PER_OCTAVE, n_bins=N_OCTAVES * BINS_PER_OCTAVE)
+            f_beat_track = functools.partial(librosa.beat.beat_track, y=y, sr=sr, trim=False)
+
+            with multiprocessing.Pool(processes=2) as pool:
+                res = pool.map(smap, [f_cqt, f_beat_track])
+                cqt = res[0]
+                tempo = res[1][0]
+                btz = res[1][1]
+        else:
+            cqt = librosa.cqt(y=y, sr=sr, bins_per_octave=BINS_PER_OCTAVE, n_bins=N_OCTAVES * BINS_PER_OCTAVE) ######
+            tempo, btz = librosa.beat.beat_track(y=y, sr=sr, trim=False)  ##########
+
+        elapsed = time.time() - start
+        # Cynthia
+        # single core: 21s, 23s, 28s, 26s
+        # multi core: 19s
+
+        # 08 HOHR
+        # single core: 45s, 46s
+        # multi core: 37s, 37s
+
+        # Hornet
+        # single core: 14s, 12s, 10s
+        # multi core: 11s, 11s
+
         C = librosa.amplitude_to_db( np.abs(cqt), ref=np.max)
 
-        self.__report_progress( .3, "Finding beats..." )
+        #self.__report_progress( .3, "Finding beats..." )
 
         ##########################################################
         # To reduce dimensionality, we'll beat-synchronous the CQT
-        tempo, btz = librosa.beat.beat_track(y=y, sr=sr, trim=False)
+        #tempo, btz = librosa.beat.beat_track(y=y, sr=sr, trim=False) ##########
         # tempo, btz = librosa.beat.beat_track(y=y, sr=sr)
         Csync = librosa.util.sync(C, btz, aggregate=np.median)
 
@@ -566,7 +602,7 @@ class InfiniteJukebox(object):
 
             # create the candidate clusters and fit them
             clusterer = sklearn.cluster.KMeans(n_clusters=n_clusters, max_iter=300,
-                                               random_state=0, n_init=20)
+                                               random_state=0, n_init=20, n_jobs=-1)
 
             cluster_labels = clusterer.fit_predict(X)
 
