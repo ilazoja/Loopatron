@@ -49,6 +49,8 @@ class JukeboxController:
 
         self.debounce = False
 
+        self.export_timestamp = None
+
     def get_verbose_info(self, verbose):
         """Show statistics about the song and the analysis"""
 
@@ -87,6 +89,24 @@ class JukeboxController:
         verbose_info += self.jukebox._extra_diag
 
         return verbose_info
+
+    def draw_loop_points_text(self):
+        ## Export loop
+        x = WINDOW_WIDTH - BUTTON_WIDTH * 5
+        y = WINDOW_HEIGHT - BUTTON_WIDTH - 10
+
+        draw_text(f"Start: {self.jukebox.start_index}", self.font, Color.WHITE.value, self.window, x, y)
+
+        start_offset = self.jukebox.beats[self.selected_jump_beat_id]['start_index']
+        loop_offset = self.jukebox.beats[self.selected_end_beat_id]['stop_index']
+        draw_text(f"Start Loop: {start_offset}", self.font, Color.WHITE.value, self.window, x, y + 15)
+        draw_text(f"End Loop: {loop_offset}", self.font, Color.WHITE.value, self.window, x, y + 30)
+
+    def draw_status_text(self):
+        if self.export_timestamp:
+            draw_text(f'Exported to brstm at {self.export_timestamp}', self.font, Color.GREEN.value, self.window, 20, 40)
+        else:
+            draw_text(f'Processed in {self.jukebox.time_elapsed:4.1f}s', self.font, Color.GREEN.value, self.window, 20, 40)
 
     def on_sound_finished(self):
 
@@ -376,6 +396,8 @@ class JukeboxController:
 
         # TODO: Fix audio playback
 
+        # TODO: Display start and end loops
+
         # TODO: Update status during loading (doesn't update, would have to use async, not sure affect on performance)
 
         # TODO: Make more efficient? (already included some multiprocessing)
@@ -383,3 +405,5 @@ class JukeboxController:
         # TODO: Remove beginning silence when making brstm
 
         # TODO: Allow resize window?
+
+        # TODO: Total Clusters to try argument, multi-processing argument, cut beginning silence argument

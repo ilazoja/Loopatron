@@ -129,7 +129,6 @@ def play_loop(filename):
             timestamp = None
         else:
             pygame.display.set_caption(f'Loopatron - {os.path.basename(filename)}')
-            draw_text(f'Processed in {jukebox.time_elapsed:3.1f}s', font, Color.GREEN.value, window, 20, 40)
             mx, my = pygame.mouse.get_pos()
             click = pygame.mouse.get_pressed()
 
@@ -139,9 +138,7 @@ def play_loop(filename):
             jukebox_controller.volume_slider(click, mx, my)
             jukebox_controller.music_slider(click, mx, my)
 
-            button_response = jukebox_controller.export_button(click, mx, my)
-            if button_response:
-                timestamp = button_response
+            jukebox_controller.export_button(click, mx, my)
 
             button_response = jukebox_controller.open_button(click, mx, my)
             if button_response:
@@ -183,8 +180,8 @@ def play_loop(filename):
                         #jukebox = initialize_jukebox(filename, do_async=False)
                         #jukebox_controller.initialize_controller(jukebox)
 
-            if timestamp:
-                draw_text(f'Exported to brstm at {timestamp}', font, Color.GREEN.value, window, 20, 40)
+            jukebox_controller.draw_loop_points_text()
+            jukebox_controller.draw_status_text()
 
             # pygame.display.flip()
             pygame.display.update()

@@ -344,7 +344,7 @@ class InfiniteJukebox(object):
 
             X = evecs[:, :k] / Cnorm[:, k-1:k]
             seg_ids = sklearn.cluster.KMeans(n_clusters=k, max_iter=1000,
-                                             random_state=0, n_init=1000).fit_predict(X)
+                                             random_state=0, n_init=1000, n_jobs=-1).fit_predict(X)
 
         # Get the amplitudes and beat-align them
         self.__report_progress( .6, "getting amplitudes")
@@ -752,7 +752,7 @@ class InfiniteJukebox(object):
 
             # cluster with candidate ki
             labels = sklearn.cluster.KMeans(n_clusters=ki, max_iter=1000,
-                                            random_state=0, n_init=20).fit_predict(X)
+                                            random_state=0, n_init=20, n_jobs=-1).fit_predict(X)
 
             entry = {'clusters':ki, 'labels':labels}
 
@@ -793,7 +793,7 @@ class InfiniteJukebox(object):
         # compute a very high fidelity set of clusters using our selected cluster size.
         X = evecs[:, :final_cluster_size] / Cnorm[:, final_cluster_size-1:final_cluster_size]
         labels = sklearn.cluster.KMeans(n_clusters=final_cluster_size, max_iter=1000,
-                                        random_state=0, n_init=1000).fit_predict(X)
+                                        random_state=0, n_init=1000, n_jobs=-1).fit_predict(X)
 
         # labels = next(c['labels'] for c in self._clusters_list if c['clusters'] == final_cluster_size)
 
