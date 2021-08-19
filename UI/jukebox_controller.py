@@ -376,8 +376,10 @@ class JukeboxController:
 
         # TODO: Fix audio playback
 
-        # TODO: Update status during loading
+        # TODO: Update status during loading (doesn't update, would have to use async, not sure affect on performance)
 
         # TODO: Make more efficient? (already included some multiprocessing)
 
-        # TODO: Report processing time elapsed
+        # TODO: Remove beginning silence when making brstm
+
+        # TODO: Allow resize window?

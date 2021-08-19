@@ -50,6 +50,12 @@ def draw_text(text, font, color, surface, x, y):
     textrect.topleft = (x, y)
     surface.blit(textobj, textrect)
 
+def update_message(main_status, sub_status, window, font):
+    window.fill(Color.DARK_BLUE.value)
+    draw_text(main_status, font, Color.WHITE.value, window, 20, 20)
+    draw_text(sub_status, font, Color.GREEN.value, window, 20, 40)
+    pygame.display.update()
+
 def get_timestamp():
     return datetime.now().strftime("%H:%M:%S")
 

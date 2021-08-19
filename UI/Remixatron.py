@@ -186,6 +186,8 @@ class InfiniteJukebox(object):
         I have made some performance improvements, but the basic parts remain (mostly) unchanged
         """
 
+        start = time.time()
+
         self.__report_progress( .1, "loading file and extracting raw audio")
 
         #
@@ -207,17 +209,14 @@ class InfiniteJukebox(object):
 
         y = librosa.core.to_mono(y)
 
-        self.__report_progress( .2, "computing pitch data and finding beats..." )
+        self.__report_progress( .2, "computing pitch data and finding beats...")
 
         # Compute the constant-q chromagram for the samples.
 
         BINS_PER_OCTAVE = 12 * 3
         N_OCTAVES = 7
 
-        start = time.time()
-
-
-
+        # If multiple cores exist, process cqt and beat track at same time to cut computation time
         if multiprocessing.cpu_count() > 1:
             f_cqt = functools.partial(librosa.cqt, y=y, sr=sr, bins_per_octave=BINS_PER_OCTAVE, n_bins=N_OCTAVES * BINS_PER_OCTAVE)
             f_beat_track = functools.partial(librosa.beat.beat_track, y=y, sr=sr, trim=False)
@@ -263,7 +262,7 @@ class InfiniteJukebox(object):
                                                                     x_max=C.shape[1]),
                                             sr=sr)
 
-        self.__report_progress( .4, "building recurrence matrix..." )
+        self.__report_progress( .4, "building recurrence matrix...")
         #####################################################################
         # Let's build a weighted recurrence matrix using beat-synchronous CQT
         # (Equation 1)
@@ -324,7 +323,7 @@ class InfiniteJukebox(object):
         # If we want k clusters, use the first k normalized eigenvectors.
         # Fun exercise: see how the segmentation changes as you vary k
 
-        self.__report_progress( .5, "clustering..." )
+        self.__report_progress( .5, "clustering...")
 
         # if a value for clusters wasn't passed in, then we need to auto-cluster
 
@@ -341,14 +340,14 @@ class InfiniteJukebox(object):
         else: # otherwise, just use the cluster value passed in
             k = self.clusters
 
-            self.__report_progress( .51, "using %d clusters" % self.clusters )
+            self.__report_progress( .51, "using %d clusters" % self.clusters)
 
             X = evecs[:, :k] / Cnorm[:, k-1:k]
             seg_ids = sklearn.cluster.KMeans(n_clusters=k, max_iter=1000,
                                              random_state=0, n_init=1000).fit_predict(X)
 
         # Get the amplitudes and beat-align them
-        self.__report_progress( .6, "getting amplitudes" )
+        self.__report_progress( .6, "getting amplitudes")
 
         # newer versions of librosa have renamed the rmse function
 
@@ -407,7 +406,7 @@ class InfiniteJukebox(object):
 
             info.append(final_beat)
 
-        self.__report_progress( .7, "truncating to fade point..." )
+        #self.__report_progress( .7, "truncating to fade point...")
 
         # get the max amplitude of the beats
         # max_amplitude = max([float(b['amplitude']) for b in info])
@@ -430,7 +429,7 @@ class InfiniteJukebox(object):
 
         loop_bounds_begin = self.__start_beat
 
-        self.__report_progress( .8, "computing final beat array..." )
+        self.__report_progress( .8, "computing final beat array...")
 
         # assign final beat ids
         for beat in beats:
@@ -524,13 +523,15 @@ class InfiniteJukebox(object):
         if self.play_ready:
             self.play_ready.set()
 
+        self.time_elapsed = time.time() - start
+
     def __report_progress(self, pct_done, message):
 
         """ If a reporting callback was passed, call it in order
             to mark progress.
         """
         if self.__progress_callback:
-            self.__progress_callback( pct_done, message )
+            self.__progress_callback( pct_done, message, self.filename)
 
     def __compute_best_cluster_with_sil(self, evecs, Cnorm):
 
@@ -602,7 +603,7 @@ class InfiniteJukebox(object):
 
             # create the candidate clusters and fit them
             clusterer = sklearn.cluster.KMeans(n_clusters=n_clusters, max_iter=300,
-                                               random_state=0, n_init=20, n_jobs=-1)
+                                               random_state=0, n_init=20, n_jobs=-1) # multiprocess
 
             cluster_labels = clusterer.fit_predict(X)
 

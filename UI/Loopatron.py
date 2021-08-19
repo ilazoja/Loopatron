@@ -49,8 +49,9 @@ def process_args():
 
     return parser.parse_args()
 
-def MyCallback(pct_complete, message):
+def MyCallback(pct_complete, message, filename):
     pass
+    #update_message(f'Loopatron - {os.path.basename(filename)}', f'{str(pct_complete*100)}% - {message}', window, font)
 
 def cleanup():
     """Cleanup before exiting"""
@@ -102,17 +103,12 @@ def play_loop(filename):
     #jukebox = initialize_jukebox(filename)
     #jukebox_controller = JukeboxController(window, jukebox)
 
-    font = pygame.font.SysFont(None, 20)
-
     ### Main Loop
     clock = pygame.time.Clock()
     done = False
 
     pygame.display.set_caption("Loopatron - Loading...")
-    window.fill(Color.DARK_BLUE.value)
-    draw_text(f'Loopatron - {os.path.basename(filename)}', font, Color.WHITE.value, window, 20, 20)
-    draw_text(f'Loading...', font, Color.GREEN.value, window, 20, 40)
-    pygame.display.update()
+    update_message(f'Loopatron - {os.path.basename(filename)}', f'Loading...', window, font)
     jukebox = initialize_jukebox(filename)
     jukebox_controller = JukeboxController(window, font, jukebox)
     timestamp = None
@@ -133,6 +129,7 @@ def play_loop(filename):
             timestamp = None
         else:
             pygame.display.set_caption(f'Loopatron - {os.path.basename(filename)}')
+            draw_text(f'Processed in {jukebox.time_elapsed:3.1f}s', font, Color.GREEN.value, window, 20, 40)
             mx, my = pygame.mouse.get_pos()
             click = pygame.mouse.get_pressed()
 
@@ -237,6 +234,7 @@ if __name__ == "__main__":
     WINDOW_SURFACE = pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE
     window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), WINDOW_SURFACE)
     pygame.display.set_caption("Loopatron")
+    font = pygame.font.SysFont(None, 20)
 
     filename = prompt_file()
 
