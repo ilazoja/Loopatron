@@ -45,6 +45,7 @@ class JukeboxController:
         self.debounce = False
 
         self.export_timestamp = None
+        self.export_success = False
 
         self.playback_time = jukebox.beats[0]['start']
         self.last_time = 0
@@ -175,7 +176,10 @@ class JukeboxController:
 
     def draw_status_text(self):
         if self.export_timestamp:
-            draw_text(f'Exported to brstm at {self.export_timestamp}', self.font, Color.GREEN.value, self.window, 20, 40)
+            if self.export_success:
+                draw_text(f'Exported to brstm at {self.export_timestamp}', self.font, Color.GREEN.value, self.window, 20, 40)
+            else:
+                draw_text(f'Error exporting to brstm at {self.export_timestamp}', self.font, Color.RED.value, self.window, 20, 40)
         else:
             draw_text(f'Processed in {self.jukebox.time_elapsed:4.1f}s', self.font, Color.GREEN.value, self.window, 20, 40)
 
@@ -212,9 +216,9 @@ class JukeboxController:
         self.channel.pause()
         self.is_paused = True
         self.write_points_to_file(LAC_DIR)
-        run_lac(self.jukebox.filename)
+        self.export_success = run_lac(self.jukebox.filename)
+        self.export_timestamp = get_timestamp()
         self.create_and_play_playback_buffer()
-        return get_timestamp()
 
     def export_button(self, click, mx, my):
 
@@ -229,8 +233,7 @@ class JukeboxController:
         draw_text("Export [E]", self.font, Color.WHITE.value, self.window, x, y + h / 2)
         if export_button_box.collidepoint((mx, my)):
             if click == (1, 0, 0):
-                return self.export_brstm()
-        return None
+                self.export_brstm()
 
     def play_pause(self):
         if not self.is_paused:
@@ -455,9 +458,10 @@ class JukeboxController:
 
     # TODO: Display audio signal?
 
-    # TODO: Export loop, automatically convert using LoopingAudioConverter
+    ## Export loop, automatically convert using LoopingAudioConverter
     # Need to include message if it completed successfully or not
-    # Need to fix LAC, since it hangs when using command line
+    # Fixed LAC, since it used to hang when using command line
+    # Avoid files with accents (flac uses a command which can mess it up)
 
     # TODO: Manual set loop using shift left and right click? Maybe highlight same clusters as current selection when holding shift
 

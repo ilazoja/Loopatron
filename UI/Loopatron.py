@@ -117,6 +117,7 @@ def play_loop(filename):
         # Update the window, but not more than 60fps
         window.fill(Color.DARK_BLUE.value)
         draw_text(f'Loopatron - {os.path.basename(filename)}', font, Color.WHITE.value, window, 20, 20)
+        draw_text(VERSION, font, Color.WHITE.value, window, WINDOW_WIDTH - BUTTON_WIDTH * 3 - 20, 20)
 
         if not is_init:
             pygame.display.set_caption("Loopatron - Loading...")
@@ -125,7 +126,6 @@ def play_loop(filename):
             jukebox = initialize_jukebox(filename)
             jukebox_controller.initialize_controller(jukebox)
             is_init = True
-            timestamp = None
         else:
             pygame.display.set_caption(f'Loopatron - {os.path.basename(filename)}')
             mx, my = pygame.mouse.get_pos()

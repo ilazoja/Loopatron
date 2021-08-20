@@ -5,11 +5,14 @@ import tkinter.filedialog
 from datetime import datetime
 import os
 import subprocess
+from pathlib import Path
 
 from pygame.locals import *
 from enum import Enum
 
-LAC_DIR = "C:/Users/Ilir/Documents/Games/Brawl/Project+ Modding/Music/LoopingAudioConverter-2.4"
+VERSION = "v1.0.0"
+
+LAC_DIR = "C:/Users/Ilir/Documents/Games/Brawl/Project+ Modding/Music/LoopingAudioConverter/LoopingAudioConverter/bin/Release"
 LAC_EXE = "LoopingAudioConverter.exe"
 LAC_CONFIG_XML = "Loopatron.xml"
 
@@ -57,18 +60,24 @@ def update_message(main_status, sub_status, window, font):
     window.fill(Color.DARK_BLUE.value)
     draw_text(main_status, font, Color.WHITE.value, window, 20, 20)
     draw_text(sub_status, font, Color.GREEN.value, window, 20, 40)
+    draw_text(VERSION, font, Color.WHITE.value, window, WINDOW_WIDTH - BUTTON_WIDTH*3 - 20, 20)
     pygame.display.update()
 
 def get_timestamp():
     return datetime.now().strftime("%H:%M:%S")
 
 def run_lac(filename, lac_dir = LAC_DIR, lac_exe = LAC_EXE, lac_config_xml = LAC_CONFIG_XML):
+    if os.path.exists(os.path.join(lac_dir, 'output', Path(filename).stem + '.brstm')):
+        os.remove(os.path.join(lac_dir, 'output', Path(filename).stem + '.brstm'))
+
     if os.path.isfile(os.path.join(lac_dir, lac_exe)):
         if os.path.isfile(os.path.join(lac_dir, lac_config_xml)):
             subprocess.run([os.path.join(lac_dir, lac_exe), "--auto", os.path.join(lac_dir, lac_config_xml), filename], cwd = lac_dir)
         else:
             subprocess.run([os.path.join(lac_dir, lac_exe), "--auto", filename], cwd = lac_dir)
-        return True
+
+        if os.path.isfile(os.path.join(lac_dir, 'output', Path(filename).stem + '.brstm')):
+            return True
     return False
 
 
