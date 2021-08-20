@@ -111,7 +111,6 @@ def play_loop(filename):
     update_message(f'Loopatron - {os.path.basename(filename)}', f'Loading...', window, font)
     jukebox = initialize_jukebox(filename)
     jukebox_controller = JukeboxController(window, font, jukebox)
-    timestamp = None
     is_init = True
 
     while not done:
@@ -147,12 +146,16 @@ def play_loop(filename):
                 #jukebox = initialize_jukebox(filename, do_async=False)
                 #jukebox_controller.initialize_controller(jukebox)
 
+            jukebox_controller.playback_timer()
+
+            if not jukebox_controller.channel.get_busy():
+                jukebox_controller.create_and_play_playback_buffer()
             # Handle user-input
             for event in pygame.event.get():
                 if (event.type == pygame.QUIT):
                     done = True
-                elif (event.type == SOUND_FINISHED):
-                    jukebox_controller.on_sound_finished()
+                #elif (event.type == SOUND_FINISHED):
+                    #jukebox_controller.on_sound_finished()
                     #print("Sound ended")
                 elif (event.type == pygame.KEYUP):
                     if (event.key == pygame.K_SPACE):

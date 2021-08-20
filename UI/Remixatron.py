@@ -230,7 +230,6 @@ class InfiniteJukebox(object):
             cqt = librosa.cqt(y=y, sr=sr, bins_per_octave=BINS_PER_OCTAVE, n_bins=N_OCTAVES * BINS_PER_OCTAVE) ######
             tempo, btz = librosa.beat.beat_track(y=y, sr=sr, trim=False)  ##########
 
-        elapsed = time.time() - start
         # Cynthia
         # single core: 21s, 23s, 28s, 26s
         # multi core: 19s
