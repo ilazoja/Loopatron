@@ -3,12 +3,15 @@ import sys
 import tkinter
 import tkinter.filedialog
 from datetime import datetime
+import os
+import subprocess
 
 from pygame.locals import *
 from enum import Enum
 
-LOOPING_AUDIO_CONVERTER_DIR = "C:/Users/Ilir/Documents/Games/Brawl/Project+ Modding/Music/LoopingAudioConverter-2.4"
-
+LAC_DIR = "C:/Users/Ilir/Documents/Games/Brawl/Project+ Modding/Music/LoopingAudioConverter-2.4"
+LAC_EXE = "LoopingAudioConverter.exe"
+LAC_CONFIG_XML = "Loopatron.xml"
 
 WINDOW_WIDTH = 1000
 WINDOW_HEIGHT = 600
@@ -58,5 +61,14 @@ def update_message(main_status, sub_status, window, font):
 
 def get_timestamp():
     return datetime.now().strftime("%H:%M:%S")
+
+def run_lac(filename, lac_dir = LAC_DIR, lac_exe = LAC_EXE, lac_config_xml = LAC_CONFIG_XML):
+    if os.path.isfile(os.path.join(lac_dir, lac_exe)):
+        if os.path.isfile(os.path.join(lac_dir, lac_config_xml)):
+            subprocess.run([os.path.join(lac_dir, lac_exe), "--auto", os.path.join(lac_dir, lac_config_xml), filename], cwd = lac_dir)
+        else:
+            subprocess.run([os.path.join(lac_dir, lac_exe), "--auto", filename], cwd = lac_dir)
+        return True
+    return False
 
 

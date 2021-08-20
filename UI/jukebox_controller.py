@@ -100,7 +100,7 @@ class JukeboxController:
             self.channel.pause()
 
     def playback_timer(self):
-        ## Because audio path is premade, this function will keep track of the current beat based on time (Note: breakpoints breaks this)
+        ## Because audio path is premade, this function will keep track of the current beat based on time (Note: breakpoints breaks this) so slider UI can update
         current_time = time.time()
         if not self.is_paused:
             self.playback_time += current_time - self.last_time
@@ -209,7 +209,11 @@ class JukeboxController:
             output.write(os.path.basename(self.jukebox.filename))
 
     def export_brstm(self):
-        self.write_points_to_file(LOOPING_AUDIO_CONVERTER_DIR)
+        self.channel.pause()
+        self.is_paused = True
+        self.write_points_to_file(LAC_DIR)
+        run_lac(self.jukebox.filename)
+        self.create_and_play_playback_buffer()
         return get_timestamp()
 
     def export_button(self, click, mx, my):
@@ -452,6 +456,8 @@ class JukeboxController:
     # TODO: Display audio signal?
 
     # TODO: Export loop, automatically convert using LoopingAudioConverter
+    # Need to include message if it completed successfully or not
+    # Need to fix LAC, since it hangs when using command line
 
     # TODO: Manual set loop using shift left and right click? Maybe highlight same clusters as current selection when holding shift
 
