@@ -216,7 +216,7 @@ class JukeboxController:
         self.channel.pause()
         self.is_paused = True
         self.write_points_to_file(LAC_DIR)
-        self.export_success = run_lac(self.jukebox.filename)
+        self.export_success = run_lac(self.jukebox.filename, self.jukebox.sample_rate)
         self.export_timestamp = get_timestamp()
         self.create_and_play_playback_buffer()
 
@@ -416,19 +416,20 @@ class JukeboxController:
                 if self.selected_end_beat_id == beat['id']:
                     current_beat_color = Color.FIREBRICK.value # Highlight selected beat with ealier loop in red
 
-                    x_jump_line = BAR_X + (float(self.jukebox.beats[jump_beat_id]['start_index'] - self.jukebox.beats[0]['start_index']) /
-                                           float(self.total_indices)) * BAR_WIDTH
+                    if jump_beat_id > 0:
+                        x_jump_line = BAR_X + (float(self.jukebox.beats[jump_beat_id - 1]['start_index'] - self.jukebox.beats[0]['start_index']) /
+                                               float(self.total_indices)) * BAR_WIDTH
 
-                    # Highlight selected jump beat in green, other ones in yellow
-                    jump_beat_color = Color.YELLOW.value
-                    if self.selected_jump_beat_num == current_jump_beat_num:
-                        self.selected_jump_beat_id = jump_beat_id
-                        jump_beat_color = Color.FOREST_GREEN.value
+                        # Highlight selected jump beat in green, other ones in yellow
+                        jump_beat_color = Color.YELLOW.value
+                        if self.selected_jump_beat_num == current_jump_beat_num:
+                            self.selected_jump_beat_id = jump_beat_id
+                            jump_beat_color = Color.FOREST_GREEN.value
 
-                    pygame.draw.rect(self.window, jump_beat_color,
-                                     [x_jump_line - SEGMENT_LINE_WIDTH / 2,
-                                      WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10, SEGMENT_LINE_WIDTH,
-                                      BAR_HEIGHT])
+                        pygame.draw.rect(self.window, jump_beat_color,
+                                         [x_jump_line - SEGMENT_LINE_WIDTH / 2,
+                                          WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10, SEGMENT_LINE_WIDTH,
+                                          BAR_HEIGHT])
 
                     current_jump_beat_num += 1
 
@@ -459,21 +460,23 @@ class JukeboxController:
     # TODO: Display audio signal?
 
     ## Export loop, automatically convert using LoopingAudioConverter
-    # Need to include message if it completed successfully or not
     # Fixed LAC, since it used to hang when using command line
     # Avoid files with accents (flac uses a command which can mess it up)
 
-    # TODO: Manual set loop using shift left and right click? Maybe highlight same clusters as current selection when holding shift
-
+    # TODO: Manual set loop using shift left and right click? Maybe highlight same clusters as current selection when holding shift. Shift right to move beginning loop point, shift let to move start point?
     ## Fixed audio playback
     # Tried a timer and different channels, still can be choppy
     # Pre-made buffer works, redid functionality so a buffer is made taking loop points into account, and timer updates UI accordingly
 
     # TODO: Update status during loading (doesn't update, would have to use async, not sure affect on performance)
 
+    # TODO: Handle cancel open file
+
+    # TODO: Check sample rate, make xml have min(32000, sample rate)
+
     # TODO: Make more efficient? (already included some multiprocessing)
 
-    # TODO: Remove beginning silence when making brstm
+    # TODO: Remove beginning silence when making brstm (maybe make it a wav file first)
 
     # TODO: Allow resize window?
 
