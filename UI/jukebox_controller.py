@@ -39,6 +39,7 @@ class JukeboxController:
         #self.selected_end_index = jukebox.beats[-1]['stop_index']
         self.selected_end_beat_id = jukebox.beats[-1]['id']
 
+        self.selected_jump_beat_id_manual = 0
         self.selected_jump_beat_num = 0
         self.selected_jump_beat_id = 0
 
@@ -171,8 +172,12 @@ class JukeboxController:
 
         start_offset = self.jukebox.beats[self.selected_jump_beat_id]['start_index']
         loop_offset = self.jukebox.beats[self.selected_end_beat_id]['stop_index']
-        draw_text(f"Start Loop: {start_offset}", self.font, Color.WHITE.value, self.window, x, y + 15)
-        draw_text(f"End Loop: {loop_offset}", self.font, Color.WHITE.value, self.window, x, y + 30)
+
+        loop_text_color = Color.WHITE.value
+        if (self.selected_jump_beat_id > self.selected_end_beat_id):
+            loop_text_color = Color.RED.value
+        draw_text(f"Start Loop: {start_offset}", self.font, loop_text_color, self.window, x, y + 15)
+        draw_text(f"End Loop: {loop_offset}", self.font, loop_text_color, self.window, x, y + 30)
 
     def draw_status_text(self):
         if self.export_timestamp:
@@ -185,6 +190,7 @@ class JukeboxController:
 
     def select_file(self):
         self.channel.stop()  # Stop before opening prompt otherwise playback will speed up
+        self.is_paused = True
         return prompt_file()
 
     def open_button(self, click, mx, my):
@@ -213,27 +219,28 @@ class JukeboxController:
             output.write(os.path.basename(self.jukebox.filename))
 
     def export_brstm(self):
-        self.channel.pause()
-        self.is_paused = True
-        self.write_points_to_file(LAC_DIR)
-        self.export_success = run_lac(self.jukebox.filename, self.jukebox.sample_rate)
-        self.export_timestamp = get_timestamp()
-        self.create_and_play_playback_buffer()
+        if self.selected_jump_beat_id <= self.selected_end_beat_id:
+            self.channel.pause()
+            self.is_paused = True
+            self.write_points_to_file(LAC_DIR)
+            self.export_success = run_lac(self.jukebox.filename, self.jukebox.sample_rate)
+            self.export_timestamp = get_timestamp()
+            self.create_and_play_playback_buffer()
 
     def export_button(self, click, mx, my):
+        if self.selected_jump_beat_id <= self.selected_end_beat_id:
+            ## Export loop
+            x = WINDOW_WIDTH - BUTTON_WIDTH*2 - 10
+            y = WINDOW_HEIGHT - BUTTON_WIDTH - 10
+            w = BUTTON_WIDTH*2
+            h = BUTTON_WIDTH
 
-        ## Export loop
-        x = WINDOW_WIDTH - BUTTON_WIDTH*2 - 10
-        y = WINDOW_HEIGHT - BUTTON_WIDTH - 10
-        w = BUTTON_WIDTH*2
-        h = BUTTON_WIDTH
-
-        export_button_box = pygame.Rect(x, y, w, h)
-        pygame.draw.rect(self.window, Color.DARK_ORANGE.value, export_button_box)
-        draw_text("Export [E]", self.font, Color.WHITE.value, self.window, x, y + h / 2)
-        if export_button_box.collidepoint((mx, my)):
-            if click == (1, 0, 0):
-                self.export_brstm()
+            export_button_box = pygame.Rect(x, y, w, h)
+            pygame.draw.rect(self.window, Color.DARK_ORANGE.value, export_button_box)
+            draw_text("Export [E]", self.font, Color.WHITE.value, self.window, x, y + h / 2)
+            if export_button_box.collidepoint((mx, my)):
+                if click == (1, 0, 0):
+                    self.export_brstm()
 
     def play_pause(self):
         if not self.is_paused:
@@ -297,8 +304,8 @@ class JukeboxController:
         # If the selected jump beat number is outside range of jump beats
         jump_beats = self.jukebox.beats[self.selected_end_beat_id]['jump_candidates']
         if self.selected_jump_beat_num >= len(jump_beats):
-            self.selected_jump_beat_num = 0
-        elif self.selected_jump_beat_num < 0:
+            self.selected_jump_beat_num = -1
+        elif self.selected_jump_beat_num < -1:
             self.selected_jump_beat_num = len(jump_beats) - 1
 
         if len(jump_beats):
@@ -362,38 +369,50 @@ class JukeboxController:
 
         pygame.draw.rect(self.window, Color.GRAY.value, [x_line - SCROLL_WIDTH / 2, WINDOW_HEIGHT - BUTTON_WIDTH - 10, SCROLL_WIDTH*2, BUTTON_WIDTH])
 
-    def music_slider(self, click, mx, my):
+    def music_slider(self, click, mx, my, keys):
 
         music_slider_bar = pygame.Rect(BAR_X, WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10, BAR_WIDTH, BAR_HEIGHT)
 
         ## Handle mouse
         scroll_index = -1
-        selected_end_index = -1
         if music_slider_bar.collidepoint((mx, my)):
             if click == (1, 0, 0):
                 scroll_index = ((mx - BAR_X) / BAR_WIDTH) * float(self.total_indices) + self.jukebox.beats[0]['start_index']
             elif click == (0, 0, 1):
-                selected_end_index = ((mx - BAR_X) / BAR_WIDTH) * float(self.total_indices) + self.jukebox.beats[0]['start_index']
-                self.selected_end_beat_id = self.jukebox.beats[-1]['id']
-                self.selected_jump_beat_num = 0
-                self.selected_jump_beat_id = 0
+                scroll_index = ((mx - BAR_X) / BAR_WIDTH) * float(self.total_indices) + self.jukebox.beats[0]['start_index']
+                if not keys[pygame.K_LSHIFT]:
+                    self.selected_end_beat_id = self.jukebox.beats[-1]['id']
+                    if self.selected_jump_beat_num >= 0:
+                        self.selected_jump_beat_num = 0
+                        self.selected_jump_beat_id = 0
 
         pygame.draw.rect(self.window, Color.GRAY.value, music_slider_bar)
 
-        current_jump_beat_num = 0
         current_segment = -1
         for beat in self.jukebox.beats:
             x_line = BAR_X + (float(beat['start_index'] - self.jukebox.beats[0]['start_index']) /
                               float(self.total_indices)) * BAR_WIDTH
 
             if scroll_index >= beat['start_index'] and scroll_index < beat['stop_index']: # find beat which index belongs to
+                ## If start indices doesn't match, i.e. the scroll bar was moved, set beat id to new beat (based on which controls)
+                # Left click controls play slider
+                # Right click controls end beat
+                # Shift right click controls jump beat
+                # Shift left click controls start
 
-                ## If start indices doesn't match, i.e. the scroll bar was moved, set beat id to new beat
-                if self.beat_id != beat['id']:
-                    self.beat_id = beat['id']
-                    self.last_selected_beat_id = self.beat_id
-                    self.create_and_play_playback_buffer()
-
+                if click == (1, 0, 0):
+                    if self.beat_id != beat['id']:
+                        self.beat_id = beat['id']
+                        self.last_selected_beat_id = self.beat_id
+                        self.create_and_play_playback_buffer()
+                elif click == (0, 0, 1):
+                    if keys[pygame.K_LSHIFT]:
+                        if self.selected_jump_beat_id_manual != beat['id']:
+                            self.selected_jump_beat_id_manual = beat['id']
+                    else:
+                        if self.selected_end_beat_id != beat['id']:
+                            self.selected_end_beat_id = beat['id']
+                            self.create_and_play_playback_buffer()
 
             ## Draw segment borders in white
             if beat['segment'] > current_segment:
@@ -403,44 +422,68 @@ class JukeboxController:
                                  [x_line - SEGMENT_LINE_WIDTH/2, WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 20, SEGMENT_LINE_WIDTH,
                                   BAR_HEIGHT + 20])
 
-            current_beat_color = None
-            for jump_beat_id in beat['jump_candidates']:
-
-                current_beat_color = Color.LIGHT_BLUE.value # Highlight beats with a earlier loop in light blue
-                if selected_end_index >= beat['start_index'] and selected_end_index < beat['stop_index']: # find beat which selected end index belongs to
-                    ## If id doesn't match, i.e. the end bar was moved, set end beat id to new beat
-                    if self.selected_end_beat_id != beat['id']:
-                        self.selected_end_beat_id = beat['id']
-                        self.create_and_play_playback_buffer()
-
-                if self.selected_end_beat_id == beat['id']:
-                    current_beat_color = Color.FIREBRICK.value # Highlight selected beat with ealier loop in red
-
-                    if jump_beat_id > 0:
-                        x_jump_line = BAR_X + (float(self.jukebox.beats[jump_beat_id - 1]['start_index'] - self.jukebox.beats[0]['start_index']) /
-                                               float(self.total_indices)) * BAR_WIDTH
-
-                        # Highlight selected jump beat in green, other ones in yellow
-                        jump_beat_color = Color.YELLOW.value
-                        if self.selected_jump_beat_num == current_jump_beat_num:
-                            self.selected_jump_beat_id = jump_beat_id
-                            jump_beat_color = Color.FOREST_GREEN.value
-
-                        pygame.draw.rect(self.window, jump_beat_color,
-                                         [x_jump_line - SEGMENT_LINE_WIDTH / 2,
-                                          WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10, SEGMENT_LINE_WIDTH,
-                                          BAR_HEIGHT])
-
-                    current_jump_beat_num += 1
-
             # Color current beat if it had a jump beat
-            if current_beat_color:
-                pygame.draw.rect(self.window, current_beat_color,
+            if len(beat['jump_candidates']) > 0:
+                pygame.draw.rect(self.window, Color.LIGHT_BLUE.value,
                          [x_line - SEGMENT_LINE_WIDTH / 2,
                           WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10, SEGMENT_LINE_WIDTH,
                           BAR_HEIGHT])
 
+            # Color beats in the same cluster as selected end beat if holding shift to guide manual jump beat selection
+            if keys[pygame.K_LSHIFT]:
+                if (beat['segment'] != self.jukebox.beats[self.selected_end_beat_id]['segment']) and (beat['cluster'] == self.jukebox.beats[self.selected_end_beat_id]['cluster']):
+                    x_jump_line = BAR_X + (float(beat['start_index'] - self.jukebox.beats[0]['start_index']) / float(self.total_indices)) * BAR_WIDTH
+                    pygame.draw.rect(self.window, Color.DARK_ORANGE.value , [x_jump_line - SEGMENT_LINE_WIDTH / 2,
+                                      WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10 + 3 * BAR_HEIGHT / 4,
+                                      SEGMENT_LINE_WIDTH, BAR_HEIGHT / 4])
 
+
+        end_beat = self.jukebox.beats[self.selected_end_beat_id]
+
+        jump_beat_num = 0
+        for jump_beat_id in end_beat['jump_candidates']:
+
+            if jump_beat_id > 0:
+                x_jump_line = BAR_X + (float(self.jukebox.beats[jump_beat_id - 1]['start_index'] - self.jukebox.beats[0]['start_index']) /
+                                                    float(self.total_indices)) * BAR_WIDTH
+
+                # Highlight selected jump beat in green, other ones in yellow
+                jump_beat_color = Color.YELLOW.value
+
+                if self.selected_jump_beat_num == jump_beat_num:
+                    self.selected_jump_beat_id = jump_beat_id
+                    jump_beat_color = Color.FOREST_GREEN.value
+
+                pygame.draw.rect(self.window, jump_beat_color, [x_jump_line - SEGMENT_LINE_WIDTH / 2,
+                                                                WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10, SEGMENT_LINE_WIDTH,
+                                                                BAR_HEIGHT])
+
+            jump_beat_num += 1
+
+        if jump_beat_num == 0:
+            if self.selected_jump_beat_id_manual > 0: # i.e. manual jump beat was moved
+                self.selected_jump_beat_num = -1
+
+        # Display manually selected jump beat as shorter (starts at bottom)
+        x_jump_line = BAR_X + (float(self.jukebox.beats[self.selected_jump_beat_id_manual]['start_index']
+                                     - self.jukebox.beats[0]['start_index']) / float(self.total_indices)) * BAR_WIDTH
+        jump_beat_color = Color.YELLOW.value
+        if self.selected_jump_beat_num == -1 or jump_beat_num == 0:
+            self.selected_jump_beat_id = self.selected_jump_beat_id_manual + 1
+            jump_beat_color = Color.FOREST_GREEN.value
+
+        pygame.draw.rect(self.window, jump_beat_color,
+                         [x_jump_line - SEGMENT_LINE_WIDTH / 2, WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10 + 3*BAR_HEIGHT/4,
+                          SEGMENT_LINE_WIDTH, BAR_HEIGHT/4])
+
+        # Display start as purple
+
+        # Color current selected end index
+        x_line = BAR_X + (float(self.jukebox.beats[self.selected_end_beat_id]['start_index'] - self.jukebox.beats[0]['start_index']) /
+                          float(self.total_indices)) * BAR_WIDTH
+        pygame.draw.rect(self.window, Color.FIREBRICK.value,
+                         [x_line - SEGMENT_LINE_WIDTH / 2, WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10,
+                          SEGMENT_LINE_WIDTH, BAR_HEIGHT])
 
         # Draw last selected scroll location
         x_line = BAR_X + (float(self.jukebox.beats[self.last_selected_beat_id]['start_index'] - self.jukebox.beats[0]['start_index']) /
@@ -472,8 +515,6 @@ class JukeboxController:
 
     # TODO: Handle cancel open file
 
-    # TODO: Check sample rate, make xml have min(32000, sample rate)
-
     # TODO: Make more efficient? (already included some multiprocessing)
 
     # TODO: Remove beginning silence when making brstm (maybe make it a wav file first)
@@ -481,3 +522,6 @@ class JukeboxController:
     # TODO: Allow resize window?
 
     # TODO: Total Clusters to try argument, multi-processing argument, cut beginning silence argument
+    # Maybe have in xml, seperate or same
+
+    # TODO: Read XML to decide max sample rate
