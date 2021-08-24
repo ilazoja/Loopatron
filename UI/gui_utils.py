@@ -9,6 +9,8 @@ from pathlib import Path
 
 from pygame.locals import *
 from enum import Enum
+import soundfile as sf
+
 
 import xml.etree.ElementTree as ET
 
@@ -45,6 +47,8 @@ class Color(Enum):
     BLACK = (0, 0, 0)
     YELLOW = (255, 255, 0)
     DARK_ORANGE = (255, 140, 0)
+    PURPLE = (128, 0, 128)
+    VIOLET = (238,130,238)
 
 def prompt_file():
     """Create a Tk file dialog and cleanup when finished"""
@@ -79,6 +83,17 @@ def edit_xml(xml_path, sample_rate):
         elem.set('SampleRate', str(min(sample_rate, MAX_SAMPLE_RATE)))
 
     tree.write(xml_path)
+
+def export_trimmed_wav(output_path, raw_audio, sample_rate, new_start_index = 0):
+    # write out the wav file with trimmed start
+    sf.write(output_path, raw_audio[new_start_index:] , sample_rate, format='WAV', subtype='PCM_24')
+
+
+def write_points_to_file(jump_offset, stop_offset, filepath, lac_dir =""):
+    with open(os.path.join(lac_dir, "loop.txt"), "w") as output:
+        output.write("\n%d " % (jump_offset))
+        output.write("%d " % (stop_offset))
+        output.write(os.path.basename(filepath))
 
 def run_lac(filename, sample_rate, lac_dir = LAC_DIR, lac_exe = LAC_EXE, lac_config_xml = LAC_CONFIG_XML):
 

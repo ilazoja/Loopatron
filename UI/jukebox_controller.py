@@ -5,6 +5,7 @@ from pygame import mixer
 import pygame.locals
 
 from UI.gui_utils import *
+import soundfile as sf
 
 SOUND_FINISHED = pygame.locals.USEREVENT + 1
 
@@ -36,12 +37,14 @@ class JukeboxController:
 
         self.last_selected_beat_id = 0
 
-        #self.selected_end_index = jukebox.beats[-1]['stop_index']
         self.selected_end_beat_id = jukebox.beats[-1]['id']
 
         self.selected_jump_beat_id_manual = 0
         self.selected_jump_beat_num = 0
         self.selected_jump_beat_id = 0
+
+        self.selected_start_beat_id = 0
+        self.trim_start = False
 
         self.debounce = False
 
@@ -141,7 +144,7 @@ class JukeboxController:
         (minutes, seconds) = divmod(round(self.jukebox.duration), 60)
         (hours, minutes) = divmod(minutes, 60)
 
-        verbose_info = info % (self.jukebox.filename, hours, minutes, seconds,
+        verbose_info = info % (self.jukebox.filepath, hours, minutes, seconds,
                                len(self.jukebox.beats), int(round(self.jukebox.tempo)), self.jukebox.clusters, self.jukebox.segments,
                                self.jukebox.sample_rate)
 
@@ -168,7 +171,9 @@ class JukeboxController:
         x = WINDOW_WIDTH - BUTTON_WIDTH * 5
         y = WINDOW_HEIGHT - BUTTON_WIDTH - 10
 
-        draw_text(f"Start: {self.jukebox.start_index}", self.font, Color.WHITE.value, self.window, x, y)
+        start_text_color = Color.WHITE.value
+        if self.trim_start:
+            start_text_color = Color.PURPLE.value
 
         start_offset = self.jukebox.beats[self.selected_jump_beat_id]['start_index']
         loop_offset = self.jukebox.beats[self.selected_end_beat_id]['stop_index']
@@ -178,6 +183,7 @@ class JukeboxController:
             loop_text_color = Color.RED.value
         draw_text(f"Start Loop: {start_offset}", self.font, loop_text_color, self.window, x, y + 15)
         draw_text(f"End Loop: {loop_offset}", self.font, loop_text_color, self.window, x, y + 30)
+        draw_text(f"Start: {self.jukebox.start_index}", self.font, start_text_color, self.window, x, y)
 
     def draw_status_text(self):
         if self.export_timestamp:
@@ -214,16 +220,48 @@ class JukeboxController:
         start_offset = self.jukebox.beats[self.selected_jump_beat_id]['start_index']
         loop_offset = self.jukebox.beats[self.selected_end_beat_id]['stop_index']
         with open(os.path.join(lac_dir, "loop.txt"), "w") as output:
-            output.write("\n%d " % (self.jukebox.start_index + start_offset))
-            output.write("%d " % (self.jukebox.start_index + loop_offset))
-            output.write(os.path.basename(self.jukebox.filename))
+            if self.trim_start:
+                output.write("\n%d " % (self.jukebox.start_index))
+                output.write("%d " % (self.jukebox.start_index))
+                output.write(os.path.basename(self.jukebox.filepath))
+            else:
+                output.write("\n%d " % (self.jukebox.start_index + start_offset))
+                output.write("%d " % (self.jukebox.start_index + loop_offset))
+                output.write(os.path.basename(self.jukebox.filepath))
+
+    def export_trimmed_wav(self):
+        # write out the wav file
+        temp_dir = os.path.join(LAC_DIR, 'tmp')
+        os.makedirs(temp_dir, exist_ok=True)
+        sf.write(os.path.join(temp_dir, Path(self.jukebox.filepath).stem + '.wav'), self.jukebox.raw_audio, self.jukebox.sample_rate, format='WAV', subtype='PCM_24')
 
     def export_brstm(self):
         if self.selected_jump_beat_id <= self.selected_end_beat_id:
             self.channel.pause()
             self.is_paused = True
-            self.write_points_to_file(LAC_DIR)
-            self.export_success = run_lac(self.jukebox.filename, self.jukebox.sample_rate)
+
+            jump_offset = self.jukebox.beats[self.selected_jump_beat_id]['start_index']
+            stop_offset = self.jukebox.beats[self.selected_end_beat_id]['stop_index']
+            filepath = self.jukebox.filepath
+
+            if self.trim_start:
+                tmp_dir = os.path.join(LAC_DIR, 'tmp')
+                os.makedirs(tmp_dir, exist_ok=True)
+                filepath = os.path.join(tmp_dir, Path(self.jukebox.filepath).stem + '.wav')
+
+                export_trimmed_wav(filepath, self.jukebox.raw_audio, self.jukebox.sample_rate)
+                write_points_to_file(jump_offset, stop_offset, filepath, LAC_DIR)
+                run_lac(filepath, self.jukebox.sample_rate)
+
+                os.remove(filepath)
+
+            else:
+                jump_offset += self.jukebox.start_index
+                stop_offset += self.jukebox.start_index
+
+                write_points_to_file(jump_offset, stop_offset, filepath, LAC_DIR)
+                run_lac(filepath, self.jukebox.sample_rate)
+
             self.export_timestamp = get_timestamp()
             self.create_and_play_playback_buffer()
 
@@ -240,7 +278,40 @@ class JukeboxController:
             draw_text("Export [E]", self.font, Color.WHITE.value, self.window, x, y + h / 2)
             if export_button_box.collidepoint((mx, my)):
                 if click == (1, 0, 0):
-                    self.export_brstm()
+                    if not self.debounce:
+                        self.export_brstm()
+                    self.debounce = True
+                else:
+                    self.debounce = False
+
+    def toggle_trim(self):
+        self.trim_start = not self.trim_start
+
+    def toggle_trim_button(self, click, mx, my):
+        ## Toggle trim button
+        x = WINDOW_WIDTH - BUTTON_WIDTH * 6 - 10
+        y = WINDOW_HEIGHT - BUTTON_WIDTH - 10
+        w = BUTTON_WIDTH
+
+        toggle_button_box = pygame.Rect(x, y, w, w)
+        button_color = Color.VIOLET.value
+        if self.trim_start:
+            button_color = Color.PURPLE.value
+        pygame.draw.rect(self.window, button_color, toggle_button_box)
+        draw_text("[T]", self.font, Color.WHITE.value, self.window, x + w / 2, y + w / 2)
+
+        button_text = "Trim Start"
+        if self.trim_start:
+            button_text = "Keep Start"
+        draw_text(button_text, self.font, Color.WHITE.value, self.window, x - 10, y + w / 2 - 15)
+
+        if toggle_button_box.collidepoint((mx, my)):
+            if click == (1, 0, 0):
+                if not self.debounce:
+                    self.toggle_trim()
+                self.debounce = True
+            else:
+                self.debounce = False
 
     def play_pause(self):
         if not self.is_paused:
@@ -431,7 +502,7 @@ class JukeboxController:
 
             # Color beats in the same cluster as selected end beat if holding shift to guide manual jump beat selection
             if keys[pygame.K_LSHIFT]:
-                if (beat['segment'] != self.jukebox.beats[self.selected_end_beat_id]['segment']) and (beat['cluster'] == self.jukebox.beats[self.selected_end_beat_id]['cluster']):
+                if (beat['segment'] < self.jukebox.beats[self.selected_end_beat_id]['segment']) and (beat['cluster'] == self.jukebox.beats[self.selected_end_beat_id]['cluster']):
                     x_jump_line = BAR_X + (float(beat['start_index'] - self.jukebox.beats[0]['start_index']) / float(self.total_indices)) * BAR_WIDTH
                     pygame.draw.rect(self.window, Color.DARK_ORANGE.value , [x_jump_line - SEGMENT_LINE_WIDTH / 2,
                                       WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10 + 3 * BAR_HEIGHT / 4,
@@ -506,18 +577,20 @@ class JukeboxController:
     # Fixed LAC, since it used to hang when using command line
     # Avoid files with accents (flac uses a command which can mess it up)
 
-    # TODO: Manual set loop using shift left and right click? Maybe highlight same clusters as current selection when holding shift. Shift right to move beginning loop point, shift let to move start point?
+    ## Manual set loop using shift left and right click.
+    # Highlight same clusters as current selection when holding shift.
+    # Shift right to move beginning loop point,
+    # TODO: Shift left to move start point? If moved to start, use real start. Color text to indicate that the start cursor was moved / invalid (after one of the loop points).
+
     ## Fixed audio playback
     # Tried a timer and different channels, still can be choppy
     # Pre-made buffer works, redid functionality so a buffer is made taking loop points into account, and timer updates UI accordingly
 
     # TODO: Update status during loading (doesn't update, would have to use async, not sure affect on performance)
 
-    # TODO: Handle cancel open file
-
     # TODO: Make more efficient? (already included some multiprocessing)
 
-    # TODO: Remove beginning silence when making brstm (maybe make it a wav file first)
+    # TODO: Remove beginning silence when making brstm (maybe make it a wav file first). Include toggle
 
     # TODO: Allow resize window?
 

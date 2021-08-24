@@ -35,7 +35,7 @@ def process_args():
 
     parser = argparse.ArgumentParser(description=description, epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument("filename", type=str,
+    parser.add_argument("filepath", type=str,
                         help="the name of the audio file to play. Most common audio types should work. (mp3, wav, ogg, etc..)")
 
     parser.add_argument("-clusters", metavar='N', type=int, default=0,
@@ -49,9 +49,9 @@ def process_args():
 
     return parser.parse_args()
 
-def MyCallback(pct_complete, message, filename):
+def MyCallback(pct_complete, message, filepath):
     pass
-    #update_message(f'Loopatron - {os.path.basename(filename)}', f'{str(pct_complete*100)}% - {message}', window, font)
+    #update_message(f'Loopatron - {os.path.basename(filepath)}', f'{str(pct_complete*100)}% - {message}', window, font)
 
 def cleanup():
     """Cleanup before exiting"""
@@ -82,12 +82,12 @@ def graceful_exit(signum, frame):
 def run_looping_audio_converter():
     pass
 
-def initialize_jukebox(filename, do_async = False):
+def initialize_jukebox(filepath, do_async = False):
     #pygame.display.quit()
     #pygame.font.quit()
     mixer.quit()
 
-    jukebox = InfiniteJukebox(filename=filename, clusters=args.clusters,
+    jukebox = InfiniteJukebox(filepath=filepath, clusters=args.clusters,
                               progress_callback=MyCallback, do_async=do_async, use_v1=args.use_v1)
 
     if not do_async:
@@ -98,9 +98,9 @@ def initialize_jukebox(filename, do_async = False):
 
     return jukebox
 
-def play_loop(filename):
+def play_loop(filepath):
     # do the clustering. Run synchronously. Post status messages to MyCallback()
-    #jukebox = initialize_jukebox(filename)
+    #jukebox = initialize_jukebox(filepath)
     #jukebox_controller = JukeboxController(window, jukebox)
 
     ### Main Loop
@@ -108,28 +108,29 @@ def play_loop(filename):
     done = False
 
     pygame.display.set_caption("Loopatron - Loading...")
-    update_message(f'Loopatron - {os.path.basename(filename)}', f'Loading...', window, font)
-    jukebox = initialize_jukebox(filename)
+    update_message(f'Loopatron - {os.path.basename(filepath)}', f'Loading...', window, font)
+    jukebox = initialize_jukebox(filepath)
     jukebox_controller = JukeboxController(window, font, jukebox)
     is_init = True
-    shift_pressed = False
+    last_click = (0, 0, 0)
     while not done:
         # Update the window, but not more than 60fps
         window.fill(Color.DARK_BLUE.value)
-        draw_text(f'Loopatron - {os.path.basename(filename)}', font, Color.WHITE.value, window, 20, 20)
+        draw_text(f'Loopatron - {os.path.basename(filepath)}', font, Color.WHITE.value, window, 20, 20)
         draw_text(VERSION, font, Color.WHITE.value, window, WINDOW_WIDTH - BUTTON_WIDTH * 3 - 20, 20)
+
 
         if not is_init:
             pygame.display.set_caption("Loopatron - Loading...")
             draw_text(f'Loading...', font, Color.GREEN.value, window, 20, 40)
             pygame.display.update()
-            jukebox = initialize_jukebox(filename)
+            jukebox = initialize_jukebox(filepath)
             jukebox_controller.initialize_controller(jukebox)
             is_init = True
         else:
             jukebox_controller.playback_timer()
 
-            pygame.display.set_caption(f'Loopatron - {os.path.basename(filename)}')
+            pygame.display.set_caption(f'Loopatron - {os.path.basename(filepath)}')
             mx, my = pygame.mouse.get_pos()
             click = pygame.mouse.get_pressed()
             keys = pygame.key.get_pressed()
@@ -137,6 +138,7 @@ def play_loop(filename):
             jukebox_controller.play_button(click, mx, my)
             jukebox_controller.back_button(click, mx, my)
             jukebox_controller.jump_buttons(click, mx, my)
+            jukebox_controller.toggle_trim_button(click, mx, my)
             jukebox_controller.volume_slider(click, mx, my)
             jukebox_controller.music_slider(click, mx, my, keys)
 
@@ -162,20 +164,30 @@ def play_loop(filename):
                         jukebox_controller.increment_jump_beat(-1)
                     elif (event.key == pygame.K_RIGHT):
                         jukebox_controller.increment_jump_beat(1)
+                    elif (event.key == pygame.K_t):
+                        jukebox_controller.toggle_trim()
                     elif (event.key == pygame.K_e):
                         jukebox_controller.export_brstm()
                     elif (event.key == pygame.K_o):
-                        selected_filename = jukebox_controller.select_file()
-                        if selected_filename:
-                            filename = selected_filename
+                        selected_filepath = jukebox_controller.select_file()
+                        if selected_filepath:
+                            filepath = selected_filepath
                             is_init = False
 
-            jukebox_controller.export_button(click, mx, my)
+            if last_click != (1, 0, 0): # Allow export to only happen on single click (rather than accidentally going over button while holding mouse down)
+                jukebox_controller.export_button(click, mx, my)
+            else:
+                jukebox_controller.export_button((0, 0, 0), mx, my)
 
-            button_response = jukebox_controller.open_button(click, mx, my)
-            if button_response:
-                filename = button_response
-                is_init = False
+            if last_click != (1, 0, 0):
+                button_response = jukebox_controller.open_button(click, mx, my)
+                if button_response:
+                    filepath = button_response
+                    is_init = False
+            else:
+                jukebox_controller.open_button((0, 0, 0), mx, my)
+
+            last_click = click
 
             jukebox_controller.draw_loop_points_text()
             jukebox_controller.draw_status_text()
@@ -230,9 +242,9 @@ if __name__ == "__main__":
     pygame.display.set_caption("Loopatron")
     font = pygame.font.SysFont(None, 20)
 
-    filename = prompt_file()
+    filepath = prompt_file()
 
-    play_loop(filename)
+    play_loop(filepath)
     #pygame.quit()
 
 

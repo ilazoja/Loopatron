@@ -133,14 +133,14 @@ class InfiniteJukebox(object):
 
     """
 
-    def __init__(self, filename, start_beat=1, clusters=0, progress_callback=None,
+    def __init__(self, filepath, start_beat=1, clusters=0, progress_callback=None,
                  do_async=False, use_v1=False):
 
         """ The constructor for the class. Also starts the processing thread.
 
             Args:
 
-                filename: the path to the audio file to process
+                filepath: the path to the audio file to process
               start_beat: the first beat to play in the file. Should almost always be 1,
                           but you can override it to skip into a specific part of the song.
                 clusters: the number of similarity clusters to compute. The DEFAULT value
@@ -158,7 +158,7 @@ class InfiniteJukebox(object):
                           Otherwise, it will use the newer silhouette-based scheme.
         """
         self.__progress_callback = progress_callback
-        self.filename = filename
+        self.filepath = filepath
         self.__start_beat = start_beat
         self.clusters = clusters
         self._extra_diag = ""
@@ -195,7 +195,7 @@ class InfiniteJukebox(object):
         # trim the silences from each end
         #
 
-        y, sr = librosa.core.load(self.filename, mono=False, sr=None)
+        y, sr = librosa.core.load(self.filepath, mono=False, sr=None)
         y, index = librosa.effects.trim(y)
 
         self.start_index = index[0]
@@ -530,7 +530,7 @@ class InfiniteJukebox(object):
             to mark progress.
         """
         if self.__progress_callback:
-            self.__progress_callback( pct_done, message, self.filename)
+            self.__progress_callback(pct_done, message, self.filepath)
 
     def __compute_best_cluster_with_sil(self, evecs, Cnorm):
 
