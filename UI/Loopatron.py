@@ -118,7 +118,7 @@ def play_loop(filepath):
         # Update the window, but not more than 60fps
         window.fill(Color.DARK_BLUE.value)
         draw_text(f'Loopatron - {os.path.basename(filepath)}', font, Color.WHITE.value, window, 20, 20)
-        draw_text(VERSION, font, Color.WHITE.value, window, WINDOW_WIDTH - BUTTON_WIDTH * 3 - 20, 20)
+        draw_text(VERSION, font, Color.WHITE.value, window, window.get_width() - BUTTON_WIDTH * 3 - 20, 20)
 
 
         if not is_init:
@@ -149,6 +149,8 @@ def play_loop(filepath):
             for event in pygame.event.get():
                 if (event.type == pygame.QUIT):
                     done = True
+                #elif (event.type == pygame.VIDEORESIZE):
+                    #window.blit(pygame.transform.scale(window_copy, event.dict['size']), (0, 0))
                 #elif (event.type == SOUND_FINISHED):
                     #jukebox_controller.on_sound_finished()
                     #print("Sound ended")
@@ -174,6 +176,8 @@ def play_loop(filepath):
                         if selected_filepath:
                             filepath = selected_filepath
                             is_init = False
+                #elif event.type == MOUSEWHEEL:
+                #    jukebox_controller.increment_jump_beat(event.y)
 
             if last_click != (1, 0, 0): # Allow export to only happen on single click (rather than accidentally going over button while holding mouse down)
                 jukebox_controller.export_button(click, mx, my)

@@ -168,8 +168,8 @@ class JukeboxController:
         return verbose_info
 
     def draw_loop_points_text(self):
-        x = WINDOW_WIDTH - BUTTON_WIDTH * 5
-        y = WINDOW_HEIGHT - BUTTON_WIDTH - 10
+        x = self.window.get_width() - BUTTON_WIDTH * 5
+        y = self.window.get_height() - BUTTON_WIDTH - 10
 
         start_offset = self.jukebox.start_index
         if self.selected_start_beat_id > 0:
@@ -210,7 +210,7 @@ class JukeboxController:
     def open_button(self, click, mx, my):
 
         ## Open a new file
-        x = WINDOW_WIDTH - BUTTON_WIDTH*2 - 10
+        x = self.window.get_width() - BUTTON_WIDTH*2 - 10
         y = 20
         w = BUTTON_WIDTH*2
         h = BUTTON_WIDTH
@@ -266,8 +266,8 @@ class JukeboxController:
     def export_button(self, click, mx, my):
         if (self.selected_jump_beat_id <= self.selected_end_beat_id) and ((not self.trim_start) or (self.selected_start_beat_id <= self.selected_jump_beat_id)):
             ## Export loop
-            x = WINDOW_WIDTH - BUTTON_WIDTH*2 - 10
-            y = WINDOW_HEIGHT - BUTTON_WIDTH - 10
+            x = self.window.get_width() - BUTTON_WIDTH*2 - 10
+            y = self.window.get_height() - BUTTON_WIDTH - 10
             w = BUTTON_WIDTH*2
             h = BUTTON_WIDTH
 
@@ -287,8 +287,8 @@ class JukeboxController:
 
     def toggle_trim_button(self, click, mx, my):
         ## Toggle trim button
-        x = WINDOW_WIDTH - BUTTON_WIDTH * 6 - 10
-        y = WINDOW_HEIGHT - BUTTON_WIDTH - 10
+        x = self.window.get_width() - BUTTON_WIDTH * 6 - 10
+        y = self.window.get_height() - BUTTON_WIDTH - 10
         w = BUTTON_WIDTH
 
         toggle_button_box = pygame.Rect(x, y, w, w)
@@ -324,8 +324,8 @@ class JukeboxController:
     def play_button(self, click, mx, my):
 
         ## Play / pause
-        x = WINDOW_WIDTH / 2 - BUTTON_WIDTH / 2
-        y = WINDOW_HEIGHT - BUTTON_WIDTH - 10
+        x = self.window.get_width() / 2 - BUTTON_WIDTH / 2
+        y = self.window.get_height() - BUTTON_WIDTH - 10
         w = BUTTON_WIDTH
 
         play_button_box = pygame.Rect(x, y, w, w)
@@ -352,8 +352,8 @@ class JukeboxController:
 
     def back_button(self, click, mx, my):
         ## Rewind to where cursor was last placed
-        x = WINDOW_WIDTH / 2 - BUTTON_WIDTH
-        y = WINDOW_HEIGHT - BUTTON_WIDTH - 10
+        x = self.window.get_width() / 2 - BUTTON_WIDTH
+        y = self.window.get_height() - BUTTON_WIDTH - 10
         w = BUTTON_WIDTH / 2
         h = BUTTON_WIDTH
         back_button_box = pygame.Rect(x, y, w, h)
@@ -382,8 +382,8 @@ class JukeboxController:
             self.create_and_play_playback_buffer()
 
     def jump_buttons(self, click, mx, my):
-        x = WINDOW_WIDTH / 2 + BUTTON_WIDTH
-        y = WINDOW_HEIGHT - BUTTON_WIDTH - 10
+        x = self.window.get_width() / 2 + BUTTON_WIDTH
+        y = self.window.get_height() - BUTTON_WIDTH - 10
         w = BUTTON_WIDTH / 2
         h = BUTTON_WIDTH
         increment_left_button_box = pygame.Rect(x, y, w, h)
@@ -421,34 +421,37 @@ class JukeboxController:
 
     def volume_slider(self, click, mx, my):
         x = BAR_X
-        y = WINDOW_HEIGHT - BUTTON_WIDTH - 10
-        w = BAR_WIDTH / 4
+        y = self.window.get_height() - BUTTON_WIDTH - 10
+        w = get_bar_width(self.window) / 4
         h = BUTTON_WIDTH
         volume_slider_bar = pygame.Rect(BAR_X, y, w, h)
 
         if volume_slider_bar.collidepoint((mx, my)):
             if click == (1, 0, 0):
-                volume = ((mx - BAR_X) / (BAR_WIDTH / 4))
+                volume = ((mx - BAR_X) / (get_bar_width(self.window)  / 4))
                 self.set_volume(volume)
 
         volume_slider_bar = pygame.Rect(x, y + h/4, w, h/4)
         pygame.draw.rect(self.window, Color.GRAY.value, volume_slider_bar)
 
-        x_line = BAR_X + (self.volume) * BAR_WIDTH / 4
+        x_line = BAR_X + (self.volume) * get_bar_width(self.window)  / 4
 
-        pygame.draw.rect(self.window, Color.GRAY.value, [x_line - SCROLL_WIDTH / 2, WINDOW_HEIGHT - BUTTON_WIDTH - 10, SCROLL_WIDTH*2, BUTTON_WIDTH])
+        pygame.draw.rect(self.window, Color.GRAY.value, [x_line - SCROLL_WIDTH / 2, self.window.get_height() - BUTTON_WIDTH - 10, SCROLL_WIDTH*2, BUTTON_WIDTH])
 
     def music_slider(self, click, mx, my, keys):
 
-        music_slider_bar = pygame.Rect(BAR_X, WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10, BAR_WIDTH, BAR_HEIGHT)
+        test_width = self.window.get_width()
+        test_height = self.window.get_height()
+
+        music_slider_bar = pygame.Rect(BAR_X, self.window.get_height() - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10, get_bar_width(self.window), BAR_HEIGHT)
 
         ## Handle mouse
         scroll_index = -1
         if music_slider_bar.collidepoint((mx, my)):
             if click == (1, 0, 0):
-                scroll_index = ((mx - BAR_X) / BAR_WIDTH) * float(self.total_indices) + self.jukebox.beats[0]['start_index']
+                scroll_index = ((mx - BAR_X) / get_bar_width(self.window) ) * float(self.total_indices) + self.jukebox.beats[0]['start_index']
             elif click == (0, 0, 1):
-                scroll_index = ((mx - BAR_X) / BAR_WIDTH) * float(self.total_indices) + self.jukebox.beats[0]['start_index']
+                scroll_index = ((mx - BAR_X) / get_bar_width(self.window) ) * float(self.total_indices) + self.jukebox.beats[0]['start_index']
                 if not (keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]):
                     self.selected_end_beat_id = self.jukebox.beats[-1]['id']
                     if self.selected_jump_beat_num >= 0:
@@ -460,7 +463,7 @@ class JukeboxController:
         current_segment = -1
         for beat in self.jukebox.beats:
             x_line = BAR_X + (float(beat['start_index'] - self.jukebox.beats[0]['start_index']) /
-                              float(self.total_indices)) * BAR_WIDTH
+                              float(self.total_indices)) * get_bar_width(self.window)
 
             if scroll_index >= beat['start_index'] and scroll_index < beat['stop_index']: # find beat which index belongs to
                 ## If start indices doesn't match, i.e. the scroll bar was moved, set beat id to new beat (based on which controls)
@@ -492,22 +495,22 @@ class JukeboxController:
                 current_segment = beat['segment']
 
                 pygame.draw.rect(self.window, Color.WHITE.value,
-                                 [x_line - SEGMENT_LINE_WIDTH/2, WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 20, SEGMENT_LINE_WIDTH,
+                                 [x_line - SEGMENT_LINE_WIDTH/2, self.window.get_height() - BUTTON_WIDTH - 20 - BAR_HEIGHT - 20, SEGMENT_LINE_WIDTH,
                                   BAR_HEIGHT + 20])
 
             # Color current beat if it had a jump beat
             if len(beat['jump_candidates']) > 0:
                 pygame.draw.rect(self.window, Color.LIGHT_BLUE.value,
                          [x_line - SEGMENT_LINE_WIDTH / 2,
-                          WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10, SEGMENT_LINE_WIDTH,
+                          self.window.get_height() - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10, SEGMENT_LINE_WIDTH,
                           BAR_HEIGHT])
 
             # Color beats in the same cluster as selected end beat if holding shift to guide manual jump beat selection
             if keys[pygame.K_LSHIFT]:
                 if (beat['segment'] < self.jukebox.beats[self.selected_end_beat_id]['segment']) and (beat['cluster'] == self.jukebox.beats[self.selected_end_beat_id]['cluster']):
-                    x_jump_line = BAR_X + (float(beat['start_index'] - self.jukebox.beats[0]['start_index']) / float(self.total_indices)) * BAR_WIDTH
+                    x_jump_line = BAR_X + (float(beat['start_index'] - self.jukebox.beats[0]['start_index']) / float(self.total_indices)) * get_bar_width(self.window)
                     pygame.draw.rect(self.window, Color.DARK_ORANGE.value , [x_jump_line - SEGMENT_LINE_WIDTH / 2,
-                                      WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10 + 3 * BAR_HEIGHT / 4,
+                                      self.window.get_height() - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10 + 3 * BAR_HEIGHT / 4,
                                       SEGMENT_LINE_WIDTH, BAR_HEIGHT / 4])
 
 
@@ -518,7 +521,7 @@ class JukeboxController:
 
             if jump_beat_id > 0:
                 x_jump_line = BAR_X + (float(self.jukebox.beats[jump_beat_id - 1]['start_index'] - self.jukebox.beats[0]['start_index']) /
-                                                    float(self.total_indices)) * BAR_WIDTH
+                                                    float(self.total_indices)) * get_bar_width(self.window)
 
                 # Highlight selected jump beat in green, other ones in yellow
                 jump_beat_color = Color.YELLOW.value
@@ -528,7 +531,7 @@ class JukeboxController:
                     jump_beat_color = Color.FOREST_GREEN.value
 
                 pygame.draw.rect(self.window, jump_beat_color, [x_jump_line - SEGMENT_LINE_WIDTH / 2,
-                                                                WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10, SEGMENT_LINE_WIDTH,
+                                                                self.window.get_height() - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10, SEGMENT_LINE_WIDTH,
                                                                 BAR_HEIGHT])
 
             jump_beat_num += 1
@@ -540,40 +543,40 @@ class JukeboxController:
         if self.trim_start:
             # Color currect selected start index
             x_line = BAR_X + (float(self.jukebox.beats[self.selected_start_beat_id]['start_index'] -
-                                    self.jukebox.beats[0]['start_index']) / float(self.total_indices)) * BAR_WIDTH
-            pygame.draw.rect(self.window, Color.VIOLET.value, [x_line - SEGMENT_LINE_WIDTH / 2, WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10,
+                                    self.jukebox.beats[0]['start_index']) / float(self.total_indices)) * get_bar_width(self.window)
+            pygame.draw.rect(self.window, Color.VIOLET.value, [x_line - SEGMENT_LINE_WIDTH / 2, self.window.get_height() - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10,
                               SEGMENT_LINE_WIDTH, BAR_HEIGHT])
 
         # Display manually selected jump beat as shorter (starts at bottom)
         x_jump_line = BAR_X + (float(self.jukebox.beats[self.selected_jump_beat_id_manual]['start_index']
-                                     - self.jukebox.beats[0]['start_index']) / float(self.total_indices)) * BAR_WIDTH
+                                     - self.jukebox.beats[0]['start_index']) / float(self.total_indices)) * get_bar_width(self.window)
         jump_beat_color = Color.YELLOW.value
         if self.selected_jump_beat_num == -1 or jump_beat_num == 0:
             self.selected_jump_beat_id = self.selected_jump_beat_id_manual + 1
             jump_beat_color = Color.FOREST_GREEN.value
 
         pygame.draw.rect(self.window, jump_beat_color,
-                         [x_jump_line - SEGMENT_LINE_WIDTH / 2, WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10 + 3*BAR_HEIGHT/4,
+                         [x_jump_line - SEGMENT_LINE_WIDTH / 2, self.window.get_height() - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10 + 3*BAR_HEIGHT/4,
                           SEGMENT_LINE_WIDTH, BAR_HEIGHT/4])
 
         # Color current selected end index
         x_line = BAR_X + (float(self.jukebox.beats[self.selected_end_beat_id]['start_index'] - self.jukebox.beats[0]['start_index']) /
-                          float(self.total_indices)) * BAR_WIDTH
+                          float(self.total_indices)) * get_bar_width(self.window)
         pygame.draw.rect(self.window, Color.FIREBRICK.value,
-                         [x_line - SEGMENT_LINE_WIDTH / 2, WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10,
+                         [x_line - SEGMENT_LINE_WIDTH / 2, self.window.get_height() - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10,
                           SEGMENT_LINE_WIDTH, BAR_HEIGHT])
 
         # Draw last selected scroll location
         x_line = BAR_X + (float(self.jukebox.beats[self.last_selected_beat_id]['start_index'] - self.jukebox.beats[0]['start_index']) /
-                 float(self.total_indices)) * BAR_WIDTH
+                 float(self.total_indices)) * get_bar_width(self.window)
         pygame.draw.rect(self.window, Color.BLACK.value,
-                         [x_line - SCROLL_WIDTH / 2, WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10,
+                         [x_line - SCROLL_WIDTH / 2, self.window.get_height() - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10,
                           SCROLL_WIDTH, BAR_HEIGHT/4])
 
         # Draw scroll location
         x_line = BAR_X + (float(self.jukebox.beats[self.beat_id]['start_index'] - self.jukebox.beats[0]['start_index']) /
-                          float(self.total_indices)) * BAR_WIDTH
-        pygame.draw.rect(self.window, Color.BLACK.value, [x_line - SCROLL_WIDTH / 2, WINDOW_HEIGHT - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10, SCROLL_WIDTH, BAR_HEIGHT])
+                          float(self.total_indices)) * get_bar_width(self.window)
+        pygame.draw.rect(self.window, Color.BLACK.value, [x_line - SCROLL_WIDTH / 2, self.window.get_height() - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10, SCROLL_WIDTH, BAR_HEIGHT])
 
 
     ## Right click, highlight a beat (closest beat with jump beat to the left) in red and beats to transition to in yellow, select which jump beats using arrow keys

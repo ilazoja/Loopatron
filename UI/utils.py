@@ -25,13 +25,12 @@ LAC_EXE = "LoopingAudioConverter.exe"
 LAC_CONFIG_XML = "LoopingAudioConverter.xml"
 
 WINDOW_WIDTH = 1000
-WINDOW_HEIGHT = 600
+WINDOW_HEIGHT = 300
 
 BUTTON_WIDTH = 50
 
 BAR_HEIGHT = 100
 BAR_X = 10
-BAR_WIDTH = WINDOW_WIDTH - BAR_X * 2
 
 SCROLL_WIDTH = 2
 
@@ -73,6 +72,9 @@ def prompt_file():
     top.destroy()
     return file_name
 
+def get_bar_width(window):
+    return window.get_width() - BAR_X * 2
+
 def draw_text(text, font, color, surface, x, y):
     textobj = font.render(text, 1, color)
     textrect = textobj.get_rect()
@@ -83,7 +85,7 @@ def update_message(main_status, sub_status, window, font):
     window.fill(Color.DARK_BLUE.value)
     draw_text(main_status, font, Color.WHITE.value, window, 20, 20)
     draw_text(sub_status, font, Color.GREEN.value, window, 20, 40)
-    draw_text(VERSION, font, Color.WHITE.value, window, WINDOW_WIDTH - BUTTON_WIDTH*3 - 20, 20)
+    draw_text(VERSION, font, Color.WHITE.value, window, window.get_width() - BUTTON_WIDTH*3 - 20, 20)
     pygame.display.update()
 
 def get_timestamp():
