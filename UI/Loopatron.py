@@ -18,7 +18,7 @@ import time
 from Remixatron import InfiniteJukebox
 from pygame import mixer
 
-from gui_utils import *
+from utils import *
 from jukebox_controller import JukeboxController
 
 SOUND_FINISHED = pygame.locals.USEREVENT + 1
@@ -83,12 +83,13 @@ def run_looping_audio_converter():
     pass
 
 def initialize_jukebox(filepath, do_async = False):
+
     #pygame.display.quit()
     #pygame.font.quit()
     mixer.quit()
 
-    jukebox = InfiniteJukebox(filepath=filepath, clusters=args.clusters,
-                              progress_callback=MyCallback, do_async=do_async, use_v1=args.use_v1)
+    jukebox = InfiniteJukebox(filepath=filepath, clusters=CONFIG['clusters'], max_clusters = CONFIG['maxClusters'],
+                              progress_callback=MyCallback, do_async=do_async, use_v1=CONFIG['useV1'])
 
     if not do_async:
         # it's important to make sure the mixer is setup with the
@@ -215,7 +216,7 @@ if __name__ == "__main__":
     # Main program logic
     #
 
-    args = process_args()
+    #args = process_args()
 
     # if we're just saving the remix to a file, then just
     # find the necessarry beats and do that

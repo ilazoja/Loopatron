@@ -133,7 +133,7 @@ class InfiniteJukebox(object):
 
     """
 
-    def __init__(self, filepath, start_beat=1, clusters=0, progress_callback=None,
+    def __init__(self, filepath, start_beat=1, clusters=0, max_clusters = 48, progress_callback=None,
                  do_async=False, use_v1=False):
 
         """ The constructor for the class. Also starts the processing thread.
@@ -149,6 +149,7 @@ class InfiniteJukebox(object):
                           values will create more promiscuous jumps. Larger values will create higher quality
                           matches, but run the risk of jumps->0 -- which will just loop the
                           audio sequentially ~forever.
+            max_clusters: number of clusters to try
        progress_callback: a callback function that will get periodic satatus updates as
                           the audio file is processed. MUST be a function that takes 2 args:
 
@@ -161,6 +162,7 @@ class InfiniteJukebox(object):
         self.filepath = filepath
         self.__start_beat = start_beat
         self.clusters = clusters
+        self.__max_clusters = max_clusters
         self._extra_diag = ""
         self._use_v1 = use_v1
 
@@ -593,7 +595,7 @@ class InfiniteJukebox(object):
         # we need at least 3 clusters for any song and shouldn't need to calculate more than
         # 48 clusters for even a really complicated peice of music.
 
-        for n_clusters in range(48, 2, -1):
+        for n_clusters in range(self.__max_clusters, 2, -1):
 
             self.__report_progress(.51, "Testing a cluster value of %d..." % n_clusters)
 

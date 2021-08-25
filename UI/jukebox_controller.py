@@ -4,7 +4,7 @@ import numpy as np
 from pygame import mixer
 import pygame.locals
 
-from UI.gui_utils import *
+from UI.utils import *
 import soundfile as sf
 
 SOUND_FINISHED = pygame.locals.USEREVENT + 1
@@ -586,8 +586,7 @@ class JukeboxController:
 
     ## Manual set loop using shift left and right click.
     # Highlight same clusters as current selection when holding shift.
-    # Shift right to move beginning loop point,
-    # TODO: Shift left to move start point? If moved to start, use real start. Color text to indicate that the start cursor was moved / invalid (after one of the loop points).
+    # Shift right to move beginning loop point.
 
     ## Fixed audio playback
     # Tried a timer and different channels, still can be choppy
@@ -597,11 +596,14 @@ class JukeboxController:
 
     # TODO: Make more efficient? (already included some multiprocessing)
 
-    # TODO: Remove beginning silence when making brstm (maybe make it a wav file first). Include toggle
+    # Remove beginning silence when making brstm by exporting it as a wav file first. Includes toggle
+    # Shift left to move start point.
 
     # TODO: Allow resize window?
 
-    # TODO: Total Clusters to try argument, multi-processing argument, cut beginning silence argument
-    # Maybe have in xml, seperate or same
+    # TODO: Total Clusters to try argument, multi-processing argument
+    # Maybe have in xml, seperate! or same
 
     # TODO: Read XML to decide max sample rate
+
+    # TODO: Opening multiple files at start -> cache mode, cache selected beats for later, next time you open beat individually will load cache (have status say loaded cache instead of processed)
