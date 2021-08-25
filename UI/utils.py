@@ -13,12 +13,16 @@ import soundfile as sf
 
 
 import xml.etree.ElementTree as ET
+import json
+import typing
 
 VERSION = "v1.0.0"
 
+CONFIG_JSON = "Loopatron.json"
+
 LAC_DIR = "C:/Users/Ilir/Documents/Games/Brawl/Project+ Modding/Music/LoopingAudioConverter/LoopingAudioConverter/bin/Release"
 LAC_EXE = "LoopingAudioConverter.exe"
-LAC_CONFIG_XML = "Loopatron.xml"
+LAC_CONFIG_XML = "LoopingAudioConverter.xml"
 
 WINDOW_WIDTH = 1000
 WINDOW_HEIGHT = 600
@@ -33,7 +37,18 @@ SCROLL_WIDTH = 2
 
 SEGMENT_LINE_WIDTH = 2
 
-MAX_SAMPLE_RATE = 32000
+if os.path.exists(os.path.join(LAC_DIR, CONFIG_JSON)):
+    # Use singleton pattern to store config file location/load config once
+    with open(os.path.join(LAC_DIR, CONFIG_JSON), 'r') as f:
+        CONFIG = json.load(f)
+else:
+    CONFIG = {
+        "clusters": 0,
+        "maxClusters": 48,
+        "useV1": False,
+        "maxSampleRate": 32000
+    }
+
 
 class Color(Enum):
     GRAY = (220, 220, 200)
@@ -74,14 +89,14 @@ def update_message(main_status, sub_status, window, font):
 def get_timestamp():
     return datetime.now().strftime("%H:%M:%S")
 
-def edit_xml(xml_path, sample_rate):
+def edit_lac_xml(xml_path, sample_rate):
+
     tree = ET.parse(xml_path)
     root = tree.getroot()
 
     # modifying an attribute
-    for elem in root.iter('item'):
-        elem.set('SampleRate', str(min(sample_rate, MAX_SAMPLE_RATE)))
-
+    sample_rate_node = root.find('SampleRate')
+    sample_rate_node.text = str(min(sample_rate, CONFIG['maxSampleRate']))
     tree.write(xml_path)
 
 def export_trimmed_wav(output_path, raw_audio, sample_rate, new_start_index = 0):
@@ -102,7 +117,7 @@ def run_lac(filename, sample_rate, lac_dir = LAC_DIR, lac_exe = LAC_EXE, lac_con
 
     if os.path.isfile(os.path.join(lac_dir, lac_exe)):
         if os.path.isfile(os.path.join(lac_dir, lac_config_xml)):
-            edit_xml(os.path.join(lac_dir, lac_config_xml), sample_rate)
+            edit_lac_xml(os.path.join(lac_dir, lac_config_xml), sample_rate)
             subprocess.run([os.path.join(lac_dir, lac_exe), "--auto", os.path.join(lac_dir, lac_config_xml), filename], cwd = lac_dir)
         else:
             subprocess.run([os.path.join(lac_dir, lac_exe), "--auto", filename], cwd = lac_dir)
@@ -110,5 +125,3 @@ def run_lac(filename, sample_rate, lac_dir = LAC_DIR, lac_exe = LAC_EXE, lac_con
         if os.path.isfile(os.path.join(lac_dir, 'output', Path(filename).stem + '.brstm')):
             return True
     return False
-
-
