@@ -14,6 +14,7 @@ import pygame.locals
 import signal
 import soundfile as sf
 import time
+import csv
 
 from Remixatron import InfiniteJukebox
 from pygame import mixer
@@ -49,9 +50,12 @@ def process_args():
 
     return parser.parse_args()
 
-def MyCallback(pct_complete, message, filepath):
+def NoCallback(pct_complete, message, filepath):
     pass
-    #update_message(f'Loopatron - {os.path.basename(filepath)}', f'{str(pct_complete*100)}% - {message}', window, font)
+
+def UpdateMessageCallback(pct_complete, message, filepath):
+    pass
+    draw_status_message_and_update(f'Loopatron - {os.path.basename(filepath)}', f'{str(pct_complete*100)}% - {message}', font, Color.DARK_ORANGE.value, window)
 
 def cleanup():
     """Cleanup before exiting"""
@@ -88,8 +92,9 @@ def initialize_jukebox(filepath, do_async = False):
     #pygame.font.quit()
     mixer.quit()
 
-    jukebox = InfiniteJukebox(filepath=filepath, clusters=CONFIG['clusters'], max_clusters = CONFIG['maxClusters'],
-                              progress_callback=MyCallback, do_async=do_async, use_v1=CONFIG['useV1'])
+    jukebox = InfiniteJukebox(filepath=filepath, start_beat=0, use_cache = True,
+                              clusters=CONFIG['clusters'], max_clusters = CONFIG['maxClusters'],
+                              progress_callback=UpdateMessageCallback, do_async=do_async, use_v1=CONFIG['useV1'])
 
     if not do_async:
         # it's important to make sure the mixer is setup with the
@@ -109,26 +114,36 @@ def play_loop(filepath):
     done = False
 
     pygame.display.set_caption("Loopatron - Loading...")
-    update_message(f'Loopatron - {os.path.basename(filepath)}', f'Loading...', window, font)
+    draw_status_message_and_update(f'Loopatron - {os.path.basename(filepath)}', f'Loading...', font, Color.DARK_ORANGE.value, window)
     jukebox = initialize_jukebox(filepath)
     jukebox_controller = JukeboxController(window, font, jukebox)
     is_init = True
     last_click = (0, 0, 0)
     while not done:
         # Update the window, but not more than 60fps
-        window.fill(Color.DARK_BLUE.value)
-        draw_text(f'Loopatron - {os.path.basename(filepath)}', font, Color.WHITE.value, window, 20, 20)
-        draw_text(VERSION, font, Color.WHITE.value, window, window.get_width() - BUTTON_WIDTH * 3 - 20, 20)
+        #window.fill(Color.DARK_BLUE.value)
+        #draw_text(f'Loopatron - {os.path.basename(filepath)}', font, Color.WHITE.value, window, 20, 20)
+        #draw_text(VERSION, font, Color.WHITE.value, window, window.get_width() - BUTTON_WIDTH * 3 - 20, 20)
 
 
         if not is_init:
+            if len(filepath) > 1:
+                cache_selected_files(filepath)
+
+
+            filepath = filepath[0]
             pygame.display.set_caption("Loopatron - Loading...")
-            draw_text(f'Loading...', font, Color.GREEN.value, window, 20, 40)
-            pygame.display.update()
+            draw_status_message_and_update(f'Loopatron - {os.path.basename(filepath)}', f'Loading...', font,
+                                           Color.DARK_ORANGE.value, window)
+            #draw_text(f'Loading...', font, Color.GREEN.value, window, 20, 40)
+            #pygame.display.update()
             jukebox = initialize_jukebox(filepath)
             jukebox_controller.initialize_controller(jukebox)
             is_init = True
         else:
+            window.fill(Color.DARK_BLUE.value)
+            draw_text(f'Loopatron - {os.path.basename(filepath)}', font, Color.WHITE.value, window, 20, 20)
+
             jukebox_controller.playback_timer()
 
             pygame.display.set_caption(f'Loopatron - {os.path.basename(filepath)}')
@@ -200,15 +215,38 @@ def play_loop(filepath):
             # pygame.display.flip()
             pygame.display.update()
 
-
-
-
-
         # Clamp FPS
         clock.tick_busy_loop(60)
 
     mixer.quit()
     pygame.quit()
+
+def cache_selected_files(filepaths):
+    os.makedirs(os.path.join(LAC_DIR, 'cache'), exist_ok=True)
+    pygame.display.set_caption("Loopatron - Caching...")
+    draw_status_message_and_update(f'Loopatron - Caching...', f'Processing {len(filepaths)} songs...', font, Color.DARK_ORANGE.value, window)
+
+    for i, filepath in enumerate(filepaths):
+        draw_status_message(f'Loopatron - Caching...', f'Processing ({i + 1}/{len(filepaths)}) {os.path.basename(filepath)}...', font, Color.DARK_ORANGE.value, window)
+
+        text_y = 60
+        for prev_filepath in reversed(filepaths[:i]):
+            draw_text(f'Processed {os.path.basename(prev_filepath)}', font, Color.GREEN.value, window, 20, text_y)
+            text_y += 20
+
+        pygame.display.update()
+
+        jukebox = InfiniteJukebox(filepath=filepath, start_beat=0, use_cache = False, clusters=CONFIG['clusters'],
+                                  max_clusters=CONFIG['maxClusters'],
+                                  progress_callback=NoCallback, do_async=False, use_v1=CONFIG['useV1'])
+
+        jukebox.save_cache()
+
+
+
+    notify(f"Finished processing and caching {len(filepaths)} songs")
+
+    #os.path.join(LAC_DIR, 'cache', Path(filepath).stem + 'csv')
 
 if __name__ == "__main__":
 
@@ -247,9 +285,13 @@ if __name__ == "__main__":
     pygame.display.set_caption("Loopatron")
     font = pygame.font.SysFont(None, 20)
 
-    filepath = prompt_file()
+    filepaths = prompt_file(select_multiple=True)
 
-    play_loop(filepath)
+    if len(filepaths) == 1:
+        play_loop(filepaths[0])
+    elif len(filepaths) > 1:
+        cache_selected_files(filepaths)
+        play_loop(filepaths[0])
     #pygame.quit()
 
 

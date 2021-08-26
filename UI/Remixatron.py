@@ -46,6 +46,11 @@ import multiprocessing
 import functools
 import time
 
+import os
+from pathlib import Path
+from utils import LAC_DIR
+import csv
+
 def smap(f):
     return f()
 
@@ -133,7 +138,7 @@ class InfiniteJukebox(object):
 
     """
 
-    def __init__(self, filepath, start_beat=1, clusters=0, max_clusters = 48, progress_callback=None,
+    def __init__(self, filepath, start_beat=1, use_cache = False, clusters=0, max_clusters = 48, progress_callback=None,
                  do_async=False, use_v1=False):
 
         """ The constructor for the class. Also starts the processing thread.
@@ -143,6 +148,7 @@ class InfiniteJukebox(object):
                 filepath: the path to the audio file to process
               start_beat: the first beat to play in the file. Should almost always be 1,
                           but you can override it to skip into a specific part of the song.
+               use_cache: use cache if it exists
                 clusters: the number of similarity clusters to compute. The DEFAULT value
                           of 0 means that the code will try to automatically find an optimal
                           cluster. If you specify your own value, it MUST be non-negative. Lower
@@ -166,13 +172,111 @@ class InfiniteJukebox(object):
         self._extra_diag = ""
         self._use_v1 = use_v1
 
-        if do_async == True:
-            self.play_ready = threading.Event()
-            self.__thread = threading.Thread(target=self.__process_audio)
-            self.__thread.start()
+        if use_cache and os.path.isfile(os.path.join(LAC_DIR, 'cache', Path(filepath).stem + '.csv')):
+            self.__load_cache()
         else:
-            self.play_ready = None
-            self.__process_audio()
+            if do_async == True:
+                self.play_ready = threading.Event()
+                self.__thread = threading.Thread(target=self.__process_audio)
+                self.__thread.start()
+            else:
+                self.play_ready = None
+                self.__process_audio()
+
+
+
+    def save_cache(self):
+        with open(os.path.join(LAC_DIR, 'cache', Path(self.filepath).stem + '.csv'), 'w', newline='') as csvfile:
+            fieldnames = ['start_index', 'cluster']  # , 'stop_index', 'start', 'duration' ]
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerow({'start_index': self.__start_beat,  # jukebox.start_index,
+                             'cluster': self.filepath})  # ,
+            # 'stop_index': filepath,
+            # 'start': 0,
+            # 'duration': jukebox.duration})
+            for beat in self.beats:
+                writer.writerow({'start_index': beat['start_index'],
+                                 'cluster': beat['cluster']})  # ,
+                # 'stop_index': beat['stop_index'],
+                # 'start': beat['start'],
+                # 'duration': beat['duration']})
+
+
+    def __load_cache(self):
+        beats = []
+        with open(os.path.join(LAC_DIR, 'cache', Path(self.filepath).stem + '.csv'), newline='') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for i, beat in enumerate(reader):
+                if i == 0:
+                    if beat['cluster'] != self.filepath:
+                        break
+                    self.__report_progress(.9, "loading from cache...")
+                    start_index_diff = max(0,int(beat['start_index']) - self.__start_beat)
+                    self.__start_beat += start_index_diff
+                elif i >= start_index_diff + 1:
+                    beats.append({'start_index': int(beat['start_index']),
+                                  'cluster': int(beat['cluster'])})#,
+                                  #'id': i})  # ,
+                    # 'stop_index': beat['stop_index'],
+                    # 'start': beat['start'],
+                    # 'duration': beat['duration']})
+
+        y, sr = librosa.core.load(self.filepath, mono=False, sr=None)
+        y, index = librosa.effects.trim(y)
+
+        self.start_index = index[0]
+
+        self.duration = librosa.core.get_duration(y, sr)
+        self.raw_audio = (y * np.iinfo(np.int16).max).astype(np.int16).T.copy(order='C')
+        self.sample_rate = sr
+
+        total_indices = y.shape[-1]
+
+        for i, beat in enumerate(beats):
+            beat['id'] = i
+            beat['start'] = (beat['start_index']/total_indices) * self.duration
+            beat['quartile'] = beat['id'] // (len(beats) / 4.0)
+
+            if i == (len(beats) - 1):
+                beat['stop_index'] = total_indices
+                beat['next'] = beats[0]['id']
+                beat['duration'] = self.duration - beat['start']
+            else:
+                beat['stop_index']  = beats[i + 1]['start_index']
+                beat['next'] = i + 1
+                beat['duration'] = ((beats[i + 1]['start_index'] - beat['start_index']) / total_indices) * self.duration
+
+            if i == 0:
+                beat['segment'] = 0
+                beat['is'] = 0
+            else:
+                if beat['cluster'] != beats[i - 1]['cluster']:
+                    beat['segment'] = beats[i - 1]['segment'] + 1
+                    beat['is'] = 0
+                else:
+                    beat['segment'] = beats[i - 1]['segment']
+                    beat['is'] = beats[i - 1]['is'] + 1
+
+            beat['buffer'] = self.raw_audio[beat['start_index']: beat['stop_index']]
+
+        for beat in beats[:-1]:
+            jump_candidates = [bx['id'] for bx in beats[:beat['id']] if  # only consider beats that are earlier
+                               (bx['cluster'] == beats[beat['next']]['cluster']) and
+                               (bx['is'] == beats[beat['next']]['is']) and
+                               # (bx['id'] % 4 == beats[beat['next']]['id'] % 4) and # removed as was limiting loop points
+                               (bx['segment'] != beat['segment']) and
+                               (bx['id'] != beat['next'])]
+
+            if jump_candidates:
+                beat['jump_candidates'] = jump_candidates
+            else:
+                beat['jump_candidates'] = []
+
+        beats[-1]['jump_candidates'] = []
+
+        self.beats = beats
+        self.time_elapsed = -1
 
     def __process_audio(self):
 
@@ -430,7 +534,7 @@ class InfiniteJukebox(object):
 
         loop_bounds_begin = self.__start_beat
 
-        self.__report_progress( .8, "computing final beat array...")
+        self.__report_progress( .8, "computing final beat array and finding loops...")
 
         # assign final beat ids
         for beat in beats:
@@ -440,20 +544,21 @@ class InfiniteJukebox(object):
         # compute a coherent 'next' beat to play. This is always just the next ordinal beat
         # unless we're at the end of the song. Then it gets a little trickier.
 
-        for beat in beats:
-            if beat == beats[-1]:
+        for beat in beats[:-1]:
+            #if beat == beats[-1]:
 
                 # if we're at the last beat, then we want to find a reasonable 'next' beat to play. It should (a) share the
                 # same cluster, (b) be in a logical place in its measure, (c) be after the computed loop_bounds_begin, and
                 # is in the first half of the song. If we can't find such an animal, then just return the beat
                 # at loop_bounds_begin
 
-                beat['next'] = next( (b['id'] for b in beats if b['cluster'] == beat['cluster'] and
-                                      b['id'] % 4 == (beat['id'] + 1) % 4 and
-                                      b['id'] <= (.5 * len(beats)) and
-                                      b['id'] >= loop_bounds_begin), loop_bounds_begin )
-            else:
-                beat['next'] = beat['id'] + 1
+                # beat['next'] = next( (b['id'] for b in beats if b['cluster'] == beat['cluster'] and
+                #                       b['id'] % 4 == (beat['id'] + 1) % 4 and
+                #                       b['id'] <= (.5 * len(beats)) and
+                #                       b['id'] >= loop_bounds_begin), loop_bounds_begin )
+                #beat['next'] = beats[0]['id']
+            #else:
+            beat['next'] = beat['id'] + 1
 
             # find all the beats that (a) are in the same cluster as the NEXT oridnal beat, (b) are of the same
             # cluster position as the next ordinal beat, (c) are in the same place in the measure as the NEXT beat,
@@ -461,7 +566,7 @@ class InfiniteJukebox(object):
             #
             # THAT collection of beats contains our jump candidates
 
-            jump_candidates = [bx['id'] for bx in beats[loop_bounds_begin:beat['id']] if # only consider beats that are earlier
+            jump_candidates = [bx['id'] for bx in beats[:beat['id']] if # only consider beats that are earlier
                                (bx['cluster'] == beats[beat['next']]['cluster']) and
                                (bx['is'] == beats[beat['next']]['is']) and
                                #(bx['id'] % 4 == beats[beat['next']]['id'] % 4) and # removed as was limiting loop points
@@ -473,6 +578,9 @@ class InfiniteJukebox(object):
             else:
                 beat['jump_candidates'] = []
 
+        beats[-1]['jump_candidates'] = []
+        beats[-1]['next'] = beats[0]['id']
+
         # save off the segment count
 
         self.segments = max([b['segment'] for b in beats]) + 1
@@ -481,12 +589,12 @@ class InfiniteJukebox(object):
         # so let's find the latest point in the song where there are still jump
         # candidates and make sure that we can't play past it.
 
-        last_chance = len(beats) - 1
-
-        for b in reversed(beats):
-            if len(b['jump_candidates']) > 0:
-                last_chance = beats.index(b)
-                break
+        # last_chance = len(beats) - 1
+        #
+        # for b in reversed(beats):
+        #     if len(b['jump_candidates']) > 0:
+        #         last_chance = beats.index(b)
+        #         break
 
         # if we play our way to the last beat that has jump candidates, then just skip
         # to the earliest jump candidate rather than enter a section from which no
@@ -498,12 +606,12 @@ class InfiniteJukebox(object):
         # the outro to the song. We can use these
         # beasts to create a sane ending for a fixed-length remix
 
-        outro_start = last_chance + 1 + self.__start_beat
-
-        if outro_start >= len(info):
-            self.outro = []
-        else:
-            self.outro = info[outro_start:]
+        # outro_start = last_chance + 1 + self.__start_beat
+        #
+        # if outro_start >= len(info):
+        #     self.outro = []
+        # else:
+        #     self.outro = info[outro_start:]
 
         #
         # Computing play_vector is removed in this as it loops live

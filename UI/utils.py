@@ -16,6 +16,9 @@ import xml.etree.ElementTree as ET
 import json
 import typing
 
+import ctypes
+from win10toast import ToastNotifier
+
 VERSION = "v1.0.0"
 
 CONFIG_JSON = "Loopatron.json"
@@ -64,13 +67,24 @@ class Color(Enum):
     PURPLE = (128, 0, 128)
     VIOLET = (238,130,238)
 
-def prompt_file():
+def notify(message):
+    if os.name == 'nt':
+        toaster = ToastNotifier()
+        toaster.show_toast("Loopatron",
+                           message,
+                           icon_path=None,
+                           duration=10)
+
+def prompt_file(select_multiple = False):
     """Create a Tk file dialog and cleanup when finished"""
     top = tkinter.Tk()
     top.withdraw()  # hide window
-    file_name = tkinter.filedialog.askopenfilename(parent=top)
+    if select_multiple:
+        file_names = tkinter.filedialog.askopenfilenames(parent=top, title = "Choose a song to loop (or choose multiple songs to process and cache)")
+    else:
+        file_names = tkinter.filedialog.askopenfilename(parent=top, title="Choose a song to loop")
     top.destroy()
-    return file_name
+    return file_names
 
 def get_bar_width(window):
     return window.get_width() - BAR_X * 2
@@ -81,11 +95,14 @@ def draw_text(text, font, color, surface, x, y):
     textrect.topleft = (x, y)
     surface.blit(textobj, textrect)
 
-def update_message(main_status, sub_status, window, font):
+def draw_status_message(main_status, sub_status, font, sub_status_color, window):
     window.fill(Color.DARK_BLUE.value)
     draw_text(main_status, font, Color.WHITE.value, window, 20, 20)
-    draw_text(sub_status, font, Color.GREEN.value, window, 20, 40)
-    draw_text(VERSION, font, Color.WHITE.value, window, window.get_width() - BUTTON_WIDTH*3 - 20, 20)
+    draw_text(sub_status, font, sub_status_color, window, 20, 40)
+    draw_text(VERSION, font, Color.WHITE.value, window, window.get_width() - BUTTON_WIDTH * 3 - 20, 20)
+
+def draw_status_message_and_update(main_status, sub_status, font, sub_status_color, window):
+    draw_status_message(main_status, sub_status, font, sub_status_color, window)
     pygame.display.update()
 
 def get_timestamp():

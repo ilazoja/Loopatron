@@ -88,7 +88,7 @@ class JukeboxController:
             else:
                 current_beat_id += 1
                 if current_beat_id >= len(self.jukebox.beats):  # if no beats left (i.e. song finished)
-                    current_beat_id = 0
+                    current_beat_id = self.selected_start_beat_id if self.trim_start else 0
 
             current_buffer = self.jukebox.beats[current_beat_id]['buffer']
 
@@ -121,7 +121,7 @@ class JukeboxController:
                 else:
                     self.beat_id += 1
                     if self.beat_id >= len(self.jukebox.beats): # if no beats left (i.e. song finished
-                        self.beat_id = 0
+                        self.beat_id = self.selected_start_beat_id if self.trim_start else 0
 
                 self.playback_time = (self.playback_time - current_beat_end_time) + self.jukebox.beats[self.beat_id]['start']
 
@@ -200,12 +200,16 @@ class JukeboxController:
             else:
                 draw_text(f'Error exporting to brstm at {self.export_timestamp}', self.font, Color.RED.value, self.window, 20, 40)
         else:
-            draw_text(f'Processed in {self.jukebox.time_elapsed:4.1f}s', self.font, Color.GREEN.value, self.window, 20, 40)
+            if self.jukebox.time_elapsed >= 0:
+                draw_text(f'Processed in {self.jukebox.time_elapsed:4.1f}s', self.font, Color.GREEN.value, self.window, 20, 40)
+            else:
+                draw_text(f'Loaded from cache', self.font, Color.GREEN.value, self.window,
+                          20, 40)
 
     def select_file(self):
         self.channel.stop()  # Stop before opening prompt otherwise playback will speed up
         self.is_paused = True
-        return prompt_file()
+        return prompt_file(select_multiple=True)
 
     def open_button(self, click, mx, my):
 
@@ -602,11 +606,9 @@ class JukeboxController:
     # Remove beginning silence when making brstm by exporting it as a wav file first. Includes toggle
     # Shift left to move start point.
 
-    # TODO: Allow resize window?
+    # Config JSON: Total Clusters to try argument, max sample rate
 
-    # TODO: Total Clusters to try argument, multi-processing argument
-    # Maybe have in xml, seperate! or same
+    # Opening multiple files at start -> cache mode, cache selected beats for later, next time you open beat individually will load cache (have status say loaded cache instead of processed)
+    # Check , in paths
 
-    # TODO: Read XML to decide max sample rate
-
-    # TODO: Opening multiple files at start -> cache mode, cache selected beats for later, next time you open beat individually will load cache (have status say loaded cache instead of processed)
+    # TODO: Refine algorithm on songs with lyrics
