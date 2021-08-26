@@ -21,6 +21,8 @@ from win10toast import ToastNotifier
 
 VERSION = "v1.0.0"
 
+FONT_PATH = "FreeSansBold.ttf"
+
 CONFIG_JSON = "Loopatron.json"
 
 LAC_DIR = "C:/Users/Ilir/Documents/Games/Brawl/Project+ Modding/Music/LoopingAudioConverter/LoopingAudioConverter/bin/Release"

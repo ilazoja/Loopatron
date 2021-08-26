@@ -7,14 +7,12 @@ work.
 """
 
 import argparse
-import numpy as np
 import os
 import pygame.event
 import pygame.locals
 import signal
-import soundfile as sf
 import time
-import csv
+import multiprocessing
 
 from Remixatron import InfiniteJukebox
 from pygame import mixer
@@ -54,7 +52,6 @@ def NoCallback(pct_complete, message, filepath):
     pass
 
 def UpdateMessageCallback(pct_complete, message, filepath):
-    pass
     draw_status_message_and_update(f'Loopatron - {os.path.basename(filepath)}', f'{str(pct_complete*100)}% - {message}', font, Color.DARK_ORANGE.value, window)
 
 def cleanup():
@@ -249,6 +246,7 @@ def cache_selected_files(filepaths):
     #os.path.join(LAC_DIR, 'cache', Path(filepath).stem + 'csv')
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
 
     # store the original SIGINT handler and install a new handler
     original_sigint = signal.getsignal(signal.SIGINT)
@@ -283,7 +281,9 @@ if __name__ == "__main__":
     WINDOW_SURFACE = pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE
     window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), WINDOW_SURFACE)
     pygame.display.set_caption("Loopatron")
-    font = pygame.font.SysFont(None, 20)
+    #font = pygame.font.SysFont(None, 20)
+    font = pygame.font.Font(FONT_PATH, 15)
+    #font = pygame.font.SysFont('arial', 20)
 
     filepaths = prompt_file(select_multiple=True)
 

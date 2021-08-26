@@ -5,7 +5,6 @@ from pygame import mixer
 import pygame.locals
 
 from utils import *
-import soundfile as sf
 
 SOUND_FINISHED = pygame.locals.USEREVENT + 1
 
@@ -168,7 +167,7 @@ class JukeboxController:
         return verbose_info
 
     def draw_loop_points_text(self):
-        x = self.window.get_width() - BUTTON_WIDTH * 5
+        x = self.window.get_width() - BUTTON_WIDTH * 5 - 10
         y = self.window.get_height() - BUTTON_WIDTH - 10
 
         start_offset = self.jukebox.start_index
@@ -291,7 +290,7 @@ class JukeboxController:
 
     def toggle_trim_button(self, click, mx, my):
         ## Toggle trim button
-        x = self.window.get_width() - BUTTON_WIDTH * 6 - 10
+        x = self.window.get_width() - BUTTON_WIDTH * 6 - 30
         y = self.window.get_height() - BUTTON_WIDTH - 10
         w = BUTTON_WIDTH
 
