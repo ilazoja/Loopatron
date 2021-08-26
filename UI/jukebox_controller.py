@@ -4,7 +4,7 @@ import numpy as np
 from pygame import mixer
 import pygame.locals
 
-from UI.utils import *
+from utils import *
 import soundfile as sf
 
 SOUND_FINISHED = pygame.locals.USEREVENT + 1
