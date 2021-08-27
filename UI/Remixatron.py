@@ -48,7 +48,6 @@ import time
 
 import os
 from pathlib import Path
-from utils import LAC_DIR
 import csv
 
 def smap(f):
@@ -172,7 +171,7 @@ class InfiniteJukebox(object):
         self._extra_diag = ""
         self._use_v1 = use_v1
 
-        if use_cache and os.path.isfile(os.path.join(LAC_DIR, 'cache', Path(filepath).stem + '.csv')):
+        if use_cache and os.path.isfile(os.path.join('cache', Path(filepath).stem + '.csv')):
             self.__load_cache()
         else:
             if do_async == True:
@@ -186,7 +185,7 @@ class InfiniteJukebox(object):
 
 
     def save_cache(self):
-        with open(os.path.join(LAC_DIR, 'cache', Path(self.filepath).stem + '.csv'), 'w', newline='') as csvfile:
+        with open(os.path.join('cache', Path(self.filepath).stem + '.csv'), 'w', newline='') as csvfile:
             fieldnames = ['start_index', 'cluster']  # , 'stop_index', 'start', 'duration' ]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
@@ -205,7 +204,7 @@ class InfiniteJukebox(object):
 
     def __load_cache(self):
         beats = []
-        with open(os.path.join(LAC_DIR, 'cache', Path(self.filepath).stem + '.csv'), newline='') as csvfile:
+        with open(os.path.join('cache', Path(self.filepath).stem + '.csv'), newline='') as csvfile:
             reader = csv.DictReader(csvfile)
             for i, beat in enumerate(reader):
                 if i == 0:

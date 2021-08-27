@@ -21,13 +21,13 @@ from win10toast import ToastNotifier
 
 VERSION = "v1.0.0"
 
-FONT_PATH = "FreeSansBold.ttf"
+#FONT_PATH = "FreeSansBold.ttf"
 
 CONFIG_JSON = "Loopatron.json"
 
-LAC_DIR = "C:/Users/Ilir/Documents/Games/Brawl/Project+ Modding/Music/LoopingAudioConverter/LoopingAudioConverter/bin/Release"
+#LAC_DIR = "/LoopingAudioConverter" #"C:/Users/Ilir/Documents/Games/Brawl/Project+ Modding/Music/LoopingAudioConverter/LoopingAudioConverter/bin/Release"
 LAC_EXE = "LoopingAudioConverter.exe"
-LAC_CONFIG_XML = "LoopingAudioConverter.xml"
+#LAC_CONFIG_XML = "LoopingAudioConverter.xml"
 
 WINDOW_WIDTH = 1000
 WINDOW_HEIGHT = 300
@@ -41,16 +41,19 @@ SCROLL_WIDTH = 2
 
 SEGMENT_LINE_WIDTH = 2
 
-if os.path.exists(os.path.join(LAC_DIR, CONFIG_JSON)):
+if os.path.exists(CONFIG_JSON):
     # Use singleton pattern to store config file location/load config once
-    with open(os.path.join(LAC_DIR, CONFIG_JSON), 'r') as f:
+    with open(CONFIG_JSON, 'r') as f:
         CONFIG = json.load(f)
 else:
     CONFIG = {
         "clusters": 0,
         "maxClusters": 48,
         "useV1": False,
-        "maxSampleRate": 32000
+        "maxSampleRate": 32000,
+        "outputDir": "./output",
+        "lacDir": "./LoopingAudioConverter",
+        "fontPath": "./resources/FreeSansBold.ttf"
     }
 
 
@@ -110,7 +113,7 @@ def draw_status_message_and_update(main_status, sub_status, font, sub_status_col
 def get_timestamp():
     return datetime.now().strftime("%H:%M:%S")
 
-def edit_lac_xml(xml_path, sample_rate):
+def edit_lac_xml(xml_path, sample_rate, output_dir):
 
     tree = ET.parse(xml_path)
     root = tree.getroot()
@@ -118,6 +121,10 @@ def edit_lac_xml(xml_path, sample_rate):
     # modifying an attribute
     sample_rate_node = root.find('SampleRate')
     sample_rate_node.text = str(min(sample_rate, CONFIG['maxSampleRate']))
+
+    output_node = root.find('OutputDir')
+    output_node.text = os.path.abspath(output_dir)
+
     tree.write(xml_path)
 
 def export_trimmed_wav(output_path, raw_audio, sample_rate, new_start_index = 0):
@@ -131,18 +138,18 @@ def write_points_to_file(jump_offset, stop_offset, filepath, lac_dir =""):
         output.write("%d " % (stop_offset))
         output.write(os.path.basename(filepath))
 
-def run_lac(filename, sample_rate, lac_dir = LAC_DIR, lac_exe = LAC_EXE, lac_config_xml = LAC_CONFIG_XML):
+def run_lac(filename, sample_rate, output_dir = CONFIG['outputDir'], lac_dir = CONFIG['lacDir'], lac_exe = LAC_EXE, lac_config_xml = CONFIG['lacXML']):
 
     if os.path.isfile(os.path.join(lac_dir, 'output', Path(filename).stem + '.brstm')):
         os.remove(os.path.join(lac_dir, 'output', Path(filename).stem + '.brstm'))
 
     if os.path.isfile(os.path.join(lac_dir, lac_exe)):
         if os.path.isfile(os.path.join(lac_dir, lac_config_xml)):
-            edit_lac_xml(os.path.join(lac_dir, lac_config_xml), sample_rate)
+            edit_lac_xml(os.path.join(lac_dir, lac_config_xml), sample_rate, output_dir)
             subprocess.run([os.path.join(lac_dir, lac_exe), "--auto", os.path.join(lac_dir, lac_config_xml), filename], cwd = lac_dir)
+            return os.path.isfile(os.path.join(output_dir, Path(filename).stem + '.brstm'))
         else:
             subprocess.run([os.path.join(lac_dir, lac_exe), "--auto", filename], cwd = lac_dir)
+            return os.path.isfile(os.path.join(lac_dir, 'output', Path(filename).stem + '.brstm'))
 
-        if os.path.isfile(os.path.join(lac_dir, 'output', Path(filename).stem + '.brstm')):
-            return True
     return False

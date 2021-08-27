@@ -219,7 +219,7 @@ def play_loop(filepath):
     pygame.quit()
 
 def cache_selected_files(filepaths):
-    os.makedirs(os.path.join(LAC_DIR, 'cache'), exist_ok=True)
+    os.makedirs('cache', exist_ok=True)
     pygame.display.set_caption("Loopatron - Caching...")
     draw_status_message_and_update(f'Loopatron - Caching...', f'Processing {len(filepaths)} songs...', font, Color.DARK_ORANGE.value, window)
 
@@ -282,7 +282,7 @@ if __name__ == "__main__":
     window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), WINDOW_SURFACE)
     pygame.display.set_caption("Loopatron")
     #font = pygame.font.SysFont(None, 20)
-    font = pygame.font.Font(FONT_PATH, 15)
+    font = pygame.font.Font(CONFIG['fontPath'], 15)
     #font = pygame.font.SysFont('arial', 20)
 
     filepaths = prompt_file(select_multiple=True)

@@ -245,12 +245,12 @@ class JukeboxController:
                 jump_offset -= start_offset
                 stop_offset -= start_offset
 
-                tmp_dir = os.path.join(LAC_DIR, 'tmp')
+                tmp_dir = os.path.join(CONFIG['lacDir'], 'tmp')
                 os.makedirs(tmp_dir, exist_ok=True)
                 filepath = os.path.join(tmp_dir, Path(self.jukebox.filepath).stem + '.wav')
 
                 export_trimmed_wav(filepath, self.jukebox.raw_audio, self.jukebox.sample_rate, start_offset)
-                write_points_to_file(jump_offset, stop_offset, filepath, LAC_DIR)
+                write_points_to_file(jump_offset, stop_offset, filepath, CONFIG['lacDir'])
                 self.export_success = run_lac(filepath, self.jukebox.sample_rate)
 
                 os.remove(filepath)
@@ -260,7 +260,7 @@ class JukeboxController:
                 jump_offset += self.jukebox.start_index
                 stop_offset += self.jukebox.start_index
 
-                write_points_to_file(jump_offset, stop_offset, filepath, LAC_DIR)
+                write_points_to_file(jump_offset, stop_offset, filepath, CONFIG['lacDir'])
                 self.export_success = run_lac(filepath, self.jukebox.sample_rate)
 
             self.export_timestamp = get_timestamp()
@@ -611,3 +611,8 @@ class JukeboxController:
     # Check , in paths
 
     # TODO: Refine algorithm on songs with lyrics
+
+    # TODO: Create build commands/script to copy and paste dependent files after building with pyinstaller e.g. Loopatron.json, font file, LoopingAudioConverter
+    # Put font and Looping audio path in json
+
+    # TODO: Modify volume
