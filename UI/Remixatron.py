@@ -173,7 +173,9 @@ class InfiniteJukebox(object):
         self._extra_diag = ""
         self._use_v1 = use_v1
 
+
         if use_cache and os.path.isfile(os.path.join(CONFIG['cacheDir'], Path(filepath).stem + '.csv')):
+            self.__evecs = np.array([])
             self.__load_cache()
         else:
             if do_async == True:
@@ -186,7 +188,8 @@ class InfiniteJukebox(object):
 
 
 
-    def save_cache(self):
+    def save_cache(self, cache_evecs = False):
+        os.makedirs(CONFIG['cacheDir'], exist_ok=True)
         with open(os.path.join(CONFIG['cacheDir'], Path(self.filepath).stem + '.csv'), 'w', newline='') as csvfile:
             fieldnames = ['start_index', 'cluster']  # , 'stop_index', 'start', 'duration' ]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -206,6 +209,8 @@ class InfiniteJukebox(object):
                 # 'start': beat['start'],
                 # 'duration': beat['duration']})
 
+        if (self.time_elapsed > 0) and cache_evecs: # don't save evecs if jukebox was loaded from cache
+            np.save(os.path.join(CONFIG['cacheDir'], Path(self.filepath).stem + '.npy'), self.__evecs)
 
     def __load_cache(self):
         beats = []
@@ -221,7 +226,7 @@ class InfiniteJukebox(object):
                 elif i == 1:
                     start_index_diff = max(0, int(beat['start_index']) - self.__start_beat)
                     self.__start_beat += start_index_diff
-                    self.clusters = int(beat['cluster'])
+                    clusters = int(beat['cluster'])
                 elif i >= start_index_diff + 2:
                     beats.append({'start_index': int(beat['start_index']),
                                   'cluster': int(beat['cluster'])})#,
@@ -240,6 +245,37 @@ class InfiniteJukebox(object):
         self.sample_rate = sr
 
         total_indices = y.shape[-1]
+
+        if os.path.isfile(os.path.join(CONFIG['cacheDir'], Path(self.filepath).stem + '.npy')) and (self.clusters != 0) and (self.clusters != clusters): # if num of clusters config was set and is different from what was saved
+            self.__evecs = np.load(os.path.join(CONFIG['cacheDir'], Path(self.filepath).stem + '.npy'))
+
+            # cumulative normalization is needed for symmetric normalize laplacian eigenvectors
+            Cnorm = np.cumsum(self.__evecs ** 2, axis=1) ** 0.5
+
+            # If we want k clusters, use the first k normalized eigenvectors.
+            # Fun exercise: see how the segmentation changes as you vary k
+
+            self.__report_progress(.9, "clustering...")
+
+            if self.clusters < 0: # pass in less than 0 to recompute best cluster
+                if self._use_v1:
+                    self.clusters, seg_ids = self.__compute_best_cluster(self.__evecs, Cnorm)
+                else:
+                    self.clusters, seg_ids = self.__compute_best_cluster_with_sil(self.__evecs, Cnorm)
+            else:
+                k = self.clusters
+
+                self.__report_progress(.91, "using %d clusters" % self.clusters)
+
+                X = self.__evecs[:, :k] / Cnorm[:, k - 1:k]
+
+                seg_ids = sklearn.cluster.KMeans(n_clusters=k, max_iter=1000,
+                                                 random_state=0, n_init=1000, n_jobs=-1).fit_predict(X)
+
+            for i, beat in enumerate(beats):
+                beat['cluster'] = seg_ids[i]
+        else:
+            self.clusters = clusters
 
         for i, beat in enumerate(beats):
             beat['id'] = i
@@ -429,6 +465,8 @@ class InfiniteJukebox(object):
         # This can help smooth over small discontinuities
         evecs = scipy.ndimage.median_filter(evecs, size=(9, 1))
 
+        self.__evecs = evecs #save intermediate step for caching
+
 
         # cumulative normalization is needed for symmetric normalize laplacian eigenvectors
         Cnorm = np.cumsum(evecs**2, axis=1)**0.5
@@ -440,7 +478,7 @@ class InfiniteJukebox(object):
 
         # if a value for clusters wasn't passed in, then we need to auto-cluster
 
-        if self.clusters == 0:
+        if self.clusters <= 0:
 
             # if we've been asked to use the original auto clustering alogrithm, otherwise
             # use the new and improved one that accounts for silhouette scores.

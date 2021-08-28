@@ -612,17 +612,22 @@ class JukeboxController:
     ## Config JSON: Total Clusters to try argument, max sample rate
 
     ## Opening multiple files at start -> cache mode, cache selected beats for later, next time you open beat individually will load cache (have status say loaded cache instead of processed)
-    # Check , in paths
+    # TODO: Check , in paths
+    # Update config before running jukebox, if cluster is not 0 then re cluster even with cache, display cluster
+    # Have an always cache mode in json config and saveEvecs in json config
+    # TODO: investigate best compression/format to save?
 
     # TODO: Refine algorithm on songs with lyrics
 
     # TODO: Create build commands/script to copy and paste dependent files after building with pyinstaller e.g. Loopatron.json, font file, LoopingAudioConverter
     # Put font and Looping audio path in json
 
-    # TODO: Modify volume (maybe through amplitude)
+    # TODO: Modify volume (either through amplify in LAC or modifying raw_audio array)
 
     ## Check if windows and LoopingAudioConverter.exe is present, if not just append to loop.txt (replace if entry exists)
 
     # TODO: Investigate clipping (maybe loop in middle of beat?)
 
-    # TODO: Update config before running jukebox, if cluster is not 0 then re cluster even with cache, display cluster
+    # TODO: Set clusters in main window (just save npy cache for current beat then, remove npy files when program opens / closes if saveEnums = False) But what about already cached, need to recalculate?
+
+

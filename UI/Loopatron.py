@@ -54,7 +54,7 @@ def NoCallback(pct_complete, message, filepath):
 def UpdateMessageCallback(pct_complete, message, filepath):
     draw_status_message_and_update(f'Loopatron - {os.path.basename(filepath)}', f'{str(pct_complete*100)}% - {message}', font, Color.DARK_ORANGE.value, window)
 
-def cleanup():
+def cleanup(current_songname = None, keep_cache = False, keep_evec_cache = False):
     """Cleanup before exiting"""
 
     #if not window:
@@ -66,6 +66,14 @@ def cleanup():
 
     #print(w_str.rstrip())
     #print
+
+    if current_songname:
+        if not keep_cache:
+            if os.path.isfile(os.path.join(CONFIG['cacheDir'], current_songname + '.csv')):
+                os.remove(os.path.join(CONFIG['cacheDir'], current_songname + '.csv'))
+        if not keep_evec_cache:
+            if os.path.isfile(os.path.join(CONFIG['cacheDir'], current_songname + '.npy')):
+                os.remove(os.path.join(CONFIG['cacheDir'], current_songname + '.npy'))
 
     mixer.quit()
 
@@ -93,6 +101,8 @@ def initialize_jukebox(filepath, do_async = False):
     jukebox = InfiniteJukebox(filepath=filepath, start_beat=0, use_cache = True,
                               clusters=config['clusters'], max_clusters = config['maxClusters'],
                               progress_callback=UpdateMessageCallback, do_async=do_async, use_v1=config['useV1'])
+
+    jukebox.save_cache(cache_evecs = True)
 
     if not do_async:
         # it's important to make sure the mixer is setup with the
@@ -161,6 +171,10 @@ def play_loop(filepath):
             # Handle user-input
             for event in pygame.event.get():
                 if (event.type == pygame.QUIT):
+                    config = get_config()
+                    keep_cache = (jukebox.time_elapsed < 0) or config['alwaysCache'] # keep cache if jukebox was retrieved from cache or if always cache
+                    keep_evec_cache = (jukebox.time_elapsed < 0) or (config['alwaysCache'] and config['cacheEvecs'])
+                    cleanup(Path(filepath).stem, keep_cache, keep_evec_cache)
                     done = True
                 #elif (event.type == pygame.VIDEORESIZE):
                     #window.blit(pygame.transform.scale(window_copy, event.dict['size']), (0, 0))
@@ -220,10 +234,11 @@ def play_loop(filepath):
     pygame.quit()
 
 def cache_selected_files(filepaths):
-    os.makedirs(CONFIG['cacheDir'], exist_ok=True)
+
     pygame.display.set_caption("Loopatron - Caching...")
     draw_status_message_and_update(f'Loopatron - Caching...', f'Processing {len(filepaths)} songs...', font, Color.DARK_ORANGE.value, window)
 
+    config = get_config()
     for i, filepath in enumerate(filepaths):
         draw_status_message(f'Loopatron - Caching...', f'Processing ({i + 1}/{len(filepaths)}) {os.path.basename(filepath)}...', font, Color.DARK_ORANGE.value, window)
 
@@ -234,11 +249,11 @@ def cache_selected_files(filepaths):
 
         pygame.display.update()
 
-        jukebox = InfiniteJukebox(filepath=filepath, start_beat=0, use_cache = False, clusters=CONFIG['clusters'],
-                                  max_clusters=CONFIG['maxClusters'],
-                                  progress_callback=NoCallback, do_async=False, use_v1=CONFIG['useV1'])
+        jukebox = InfiniteJukebox(filepath=filepath, start_beat=0, use_cache = False, clusters=config['clusters'],
+                                  max_clusters=config['maxClusters'],
+                                  progress_callback=NoCallback, do_async=False, use_v1=config['useV1'])
 
-        jukebox.save_cache()
+        jukebox.save_cache(config['cacheEvecs'])
 
 
 
@@ -247,7 +262,7 @@ def cache_selected_files(filepaths):
     #os.path.join(LAC_DIR, 'cache', Path(filepath).stem + 'csv')
 
 if __name__ == "__main__":
-    multiprocessing.freeze_support()
+    multiprocessing.freeze_support() # Needed for pyinstaller and multiprocessing with pygame
 
     # store the original SIGINT handler and install a new handler
     original_sigint = signal.getsignal(signal.SIGINT)

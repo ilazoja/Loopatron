@@ -52,9 +52,12 @@ def get_config():
             "maxClusters": 48,
             "useV1": False,
             "maxSampleRate": 32000,
+            "alwaysCache": False,
+            "cacheEvecs": False,
             "outputDir": "./output",
-            "lacDir": "./LoopingAudioConverter",
             "cacheDir": "./cache",
+            "lacDir": "./LoopingAudioConverter",
+            "lacXML": "LoopingAudioConverter.xml",
             "fontPath": "./resources/FreeSansBold.ttf"
         }
 
