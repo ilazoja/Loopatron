@@ -50,6 +50,8 @@ import os
 from pathlib import Path
 import csv
 
+from utils import CONFIG
+
 def smap(f):
     return f()
 
@@ -171,7 +173,7 @@ class InfiniteJukebox(object):
         self._extra_diag = ""
         self._use_v1 = use_v1
 
-        if use_cache and os.path.isfile(os.path.join('cache', Path(filepath).stem + '.csv')):
+        if use_cache and os.path.isfile(os.path.join(CONFIG['cacheDir'], Path(filepath).stem + '.csv')):
             self.__load_cache()
         else:
             if do_async == True:
@@ -185,12 +187,15 @@ class InfiniteJukebox(object):
 
 
     def save_cache(self):
-        with open(os.path.join('cache', Path(self.filepath).stem + '.csv'), 'w', newline='') as csvfile:
+        with open(os.path.join(CONFIG['cacheDir'], Path(self.filepath).stem + '.csv'), 'w', newline='') as csvfile:
             fieldnames = ['start_index', 'cluster']  # , 'stop_index', 'start', 'duration' ]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
-            writer.writerow({'start_index': self.__start_beat,  # jukebox.start_index,
-                             'cluster': self.filepath})  # ,
+            writer.writerow({'start_index': self.filepath,  # jukebox.start_index,
+                             'cluster': self.avg_amplitude})
+            writer.writerow({'start_index': self.__start_beat,
+                             'cluster': self.clusters})
+            # ,
             # 'stop_index': filepath,
             # 'start': 0,
             # 'duration': jukebox.duration})
@@ -204,16 +209,20 @@ class InfiniteJukebox(object):
 
     def __load_cache(self):
         beats = []
-        with open(os.path.join('cache', Path(self.filepath).stem + '.csv'), newline='') as csvfile:
+        with open(os.path.join(CONFIG['cacheDir'], Path(self.filepath).stem + '.csv'), newline='') as csvfile:
             reader = csv.DictReader(csvfile)
             for i, beat in enumerate(reader):
                 if i == 0:
-                    if beat['cluster'] != self.filepath:
+                    if beat['start_index'] != self.filepath:
                         break
-                    self.__report_progress(.9, "loading from cache...")
-                    start_index_diff = max(0,int(beat['start_index']) - self.__start_beat)
+                    self.__report_progress(.8, "loading from cache...")
+                    self.avg_amplitude = float(beat['cluster'])
+
+                elif i == 1:
+                    start_index_diff = max(0, int(beat['start_index']) - self.__start_beat)
                     self.__start_beat += start_index_diff
-                elif i >= start_index_diff + 1:
+                    self.clusters = int(beat['cluster'])
+                elif i >= start_index_diff + 2:
                     beats.append({'start_index': int(beat['start_index']),
                                   'cluster': int(beat['cluster'])})#,
                                   #'id': i})  # ,
@@ -514,17 +523,17 @@ class InfiniteJukebox(object):
 
         # get the max amplitude of the beats
         # max_amplitude = max([float(b['amplitude']) for b in info])
-        max_amplitude = sum([float(b['amplitude']) for b in info]) / len(info)
+        avg_amplitude = sum([float(b['amplitude']) for b in info]) / len(info)
 
         # assume that the fade point of the song is the last beat of the song that is >= 75% of
         # the max amplitude.
 
-        self.max_amplitude = max_amplitude
+        self.avg_amplitude = avg_amplitude
 
         fade = len(info) - 1
 
         #for b in reversed(info):
-        #    if b['amplitude'] >= (.75 * max_amplitude):
+        #    if b['amplitude'] >= (.75 * avg_amplitude):
         #        fade = info.index(b)
         #        break
 

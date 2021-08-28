@@ -41,21 +41,24 @@ SCROLL_WIDTH = 2
 
 SEGMENT_LINE_WIDTH = 2
 
-if os.path.exists(CONFIG_JSON):
-    # Use singleton pattern to store config file location/load config once
-    with open(CONFIG_JSON, 'r') as f:
-        CONFIG = json.load(f)
-else:
-    CONFIG = {
-        "clusters": 0,
-        "maxClusters": 48,
-        "useV1": False,
-        "maxSampleRate": 32000,
-        "outputDir": "./output",
-        "lacDir": "./LoopingAudioConverter",
-        "fontPath": "./resources/FreeSansBold.ttf"
-    }
+def get_config():
+    if os.path.exists(CONFIG_JSON):
+        # Use singleton pattern to store config file location/load config once
+        with open(CONFIG_JSON, 'r') as f:
+            return json.load(f)
+    else:
+        return {
+            "clusters": 0,
+            "maxClusters": 48,
+            "useV1": False,
+            "maxSampleRate": 32000,
+            "outputDir": "./output",
+            "lacDir": "./LoopingAudioConverter",
+            "cacheDir": "./cache",
+            "fontPath": "./resources/FreeSansBold.ttf"
+        }
 
+CONFIG = get_config()
 
 class Color(Enum):
     GRAY = (220, 220, 200)
@@ -131,25 +134,38 @@ def export_trimmed_wav(output_path, raw_audio, sample_rate, new_start_index = 0)
     # write out the wav file with trimmed start
     sf.write(output_path, raw_audio[new_start_index:] , sample_rate, format='WAV', subtype='PCM_24')
 
+def is_lac_present(lac_dir = CONFIG['lacDir'], lac_exe = LAC_EXE):
+    return (os.name == 'nt') and (os.path.isfile(os.path.join(lac_dir, lac_exe)))
 
-def write_points_to_file(jump_offset, stop_offset, filepath, lac_dir =""):
-    with open(os.path.join(lac_dir, "loop.txt"), "w") as output:
+def write_points_to_file(jump_offset, stop_offset, filepath, lac_dir = CONFIG['lacDir']):
+
+    all_entries = []
+
+    # Append if LAC is not present
+    if not is_lac_present(lac_dir, LAC_EXE):
+        with open(os.path.join(lac_dir, "loop.txt"), 'r') as f:
+            for current_entry in f:
+                if (len(current_entry) > 3) and (os.path.basename(filepath) not in current_entry): # if entry already exists, remove
+                    all_entries.append(current_entry)
+
+    with open(os.path.join(lac_dir, "loop.txt"), 'w') as output:
+        output.writelines(all_entries)
         output.write("\n%d " % (jump_offset))
         output.write("%d " % (stop_offset))
         output.write(os.path.basename(filepath))
 
 def run_lac(filename, sample_rate, output_dir = CONFIG['outputDir'], lac_dir = CONFIG['lacDir'], lac_exe = LAC_EXE, lac_config_xml = CONFIG['lacXML']):
 
-    if os.path.isfile(os.path.join(lac_dir, 'output', Path(filename).stem + '.brstm')):
-        os.remove(os.path.join(lac_dir, 'output', Path(filename).stem + '.brstm'))
+    if os.path.isfile(os.path.join(output_dir, Path(filename).stem + '.brstm')):
+        os.remove(os.path.join(output_dir, Path(filename).stem + '.brstm'))
 
-    if os.path.isfile(os.path.join(lac_dir, lac_exe)):
+    if is_lac_present(lac_dir, lac_exe):
         if os.path.isfile(os.path.join(lac_dir, lac_config_xml)):
             edit_lac_xml(os.path.join(lac_dir, lac_config_xml), sample_rate, output_dir)
             subprocess.run([os.path.join(lac_dir, lac_exe), "--auto", os.path.join(lac_dir, lac_config_xml), filename], cwd = lac_dir)
             return os.path.isfile(os.path.join(output_dir, Path(filename).stem + '.brstm'))
         else:
             subprocess.run([os.path.join(lac_dir, lac_exe), "--auto", filename], cwd = lac_dir)
-            return os.path.isfile(os.path.join(lac_dir, 'output', Path(filename).stem + '.brstm'))
+            return os.path.isfile(os.path.join(output_dir, Path(filename).stem + '.brstm'))
 
     return False

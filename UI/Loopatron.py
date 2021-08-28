@@ -89,9 +89,10 @@ def initialize_jukebox(filepath, do_async = False):
     #pygame.font.quit()
     mixer.quit()
 
+    config = get_config()
     jukebox = InfiniteJukebox(filepath=filepath, start_beat=0, use_cache = True,
-                              clusters=CONFIG['clusters'], max_clusters = CONFIG['maxClusters'],
-                              progress_callback=UpdateMessageCallback, do_async=do_async, use_v1=CONFIG['useV1'])
+                              clusters=config['clusters'], max_clusters = config['maxClusters'],
+                              progress_callback=UpdateMessageCallback, do_async=do_async, use_v1=config['useV1'])
 
     if not do_async:
         # it's important to make sure the mixer is setup with the
@@ -219,7 +220,7 @@ def play_loop(filepath):
     pygame.quit()
 
 def cache_selected_files(filepaths):
-    os.makedirs('cache', exist_ok=True)
+    os.makedirs(CONFIG['cacheDir'], exist_ok=True)
     pygame.display.set_caption("Loopatron - Caching...")
     draw_status_message_and_update(f'Loopatron - Caching...', f'Processing {len(filepaths)} songs...', font, Color.DARK_ORANGE.value, window)
 

@@ -7,6 +7,7 @@ import pygame.locals
 from utils import *
 
 SOUND_FINISHED = pygame.locals.USEREVENT + 1
+import librosa
 
 class JukeboxController:
 
@@ -171,26 +172,32 @@ class JukeboxController:
         y = self.window.get_height() - BUTTON_WIDTH - 10
 
         start_offset = self.jukebox.start_index
-        if self.selected_start_beat_id > 0:
+        if (self.selected_start_beat_id > 0):
             start_offset += self.jukebox.beats[self.selected_start_beat_id]['start_index']
         jump_offset = self.jukebox.beats[self.selected_jump_beat_id]['start_index'] + self.jukebox.start_index
         stop_offset = self.jukebox.beats[self.selected_end_beat_id]['stop_index'] + self.jukebox.start_index
 
-        jump_text_color = Color.WHITE.value
-        loop_text_color = Color.WHITE.value
+        jump_text_color = Color.GREEN.value
+        loop_text_color = Color.GREEN.value
         if (self.selected_jump_beat_id > self.selected_end_beat_id):
             jump_text_color = Color.RED.value
             loop_text_color = Color.Red.value
         start_text_color = Color.WHITE.value
         if self.trim_start:
+            jump_offset -= start_offset
+            stop_offset -= start_offset
+
             start_text_color = Color.VIOLET.value
             if (self.selected_start_beat_id > self.selected_jump_beat_id):
                 start_text_color = Color.RED.value
                 jump_text_color = Color.RED.value
 
+        draw_text(f"Start: {start_offset}", self.font, start_text_color, self.window, x, y)
         draw_text(f"Start Loop: {jump_offset}", self.font, jump_text_color, self.window, x, y + 15)
         draw_text(f"End Loop: {stop_offset}", self.font, loop_text_color, self.window, x, y + 30)
-        draw_text(f"Start: {start_offset}", self.font, start_text_color, self.window, x, y)
+
+        draw_text(f"Avg Amplitude: {self.jukebox.avg_amplitude:3.4f}", self.font, Color.WHITE.value, self.window, BAR_X + get_bar_width(self.window) / 4 + 10, y)
+        draw_text(f"Clusters: {self.jukebox.clusters}", self.font, Color.WHITE.value, self.window, BAR_X + get_bar_width(self.window) / 4 + 10, y + 15)
 
     def draw_status_text(self):
         if self.export_timestamp:
@@ -239,7 +246,7 @@ class JukeboxController:
             if self.trim_start:
                 # Adjust offset based on new start
                 start_offset = 0
-                if self.selected_start_beat_id > 0:
+                if (self.selected_start_beat_id > 0):
                     start_offset = self.jukebox.beats[self.selected_start_beat_id]['start_index']
 
                 jump_offset -= start_offset
@@ -252,8 +259,8 @@ class JukeboxController:
                 export_trimmed_wav(filepath, self.jukebox.raw_audio, self.jukebox.sample_rate, start_offset)
                 write_points_to_file(jump_offset, stop_offset, filepath, CONFIG['lacDir'])
                 self.export_success = run_lac(filepath, self.jukebox.sample_rate)
-
-                os.remove(filepath)
+                if not self.export_sucess:
+                    os.remove(filepath)
 
             else:
                 # Adjust offset based on part of song that is trimmed in algorithm
@@ -443,9 +450,6 @@ class JukeboxController:
 
     def music_slider(self, click, mx, my, keys):
 
-        test_width = self.window.get_width()
-        test_height = self.window.get_height()
-
         music_slider_bar = pygame.Rect(BAR_X, self.window.get_height() - BUTTON_WIDTH - 20 - BAR_HEIGHT - 10, get_bar_width(self.window), BAR_HEIGHT)
 
         ## Handle mouse
@@ -602,12 +606,12 @@ class JukeboxController:
 
     # TODO: Make more efficient? (already included some multiprocessing)
 
-    # Remove beginning silence when making brstm by exporting it as a wav file first. Includes toggle
+    ## Remove beginning silence when making brstm by exporting it as a wav file first. Includes toggle
     # Shift left to move start point.
 
-    # Config JSON: Total Clusters to try argument, max sample rate
+    ## Config JSON: Total Clusters to try argument, max sample rate
 
-    # Opening multiple files at start -> cache mode, cache selected beats for later, next time you open beat individually will load cache (have status say loaded cache instead of processed)
+    ## Opening multiple files at start -> cache mode, cache selected beats for later, next time you open beat individually will load cache (have status say loaded cache instead of processed)
     # Check , in paths
 
     # TODO: Refine algorithm on songs with lyrics
@@ -615,4 +619,10 @@ class JukeboxController:
     # TODO: Create build commands/script to copy and paste dependent files after building with pyinstaller e.g. Loopatron.json, font file, LoopingAudioConverter
     # Put font and Looping audio path in json
 
-    # TODO: Modify volume
+    # TODO: Modify volume (maybe through amplitude)
+
+    ## Check if windows and LoopingAudioConverter.exe is present, if not just append to loop.txt (replace if entry exists)
+
+    # TODO: Investigate clipping (maybe loop in middle of beat?)
+
+    # TODO: Update config before running jukebox, if cluster is not 0 then re cluster even with cache, display cluster
