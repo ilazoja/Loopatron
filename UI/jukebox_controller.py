@@ -127,6 +127,11 @@ class JukeboxController:
 
         self.last_time = current_time
 
+    def recluster(self, clusters):
+        if self.jukebox.evecs.size > 0:
+            self.channel.stop()
+            self.is_paused = True
+            self.jukebox.recompute_beat_array(clusters)
 
     def get_verbose_info(self, verbose):
         """Show statistics about the song and the analysis"""
@@ -527,7 +532,7 @@ class JukeboxController:
         for jump_beat_id in end_beat['jump_candidates']:
 
             if jump_beat_id > 0:
-                x_jump_line = BAR_X + (float(self.jukebox.beats[jump_beat_id - 1]['start_index'] - self.jukebox.beats[0]['start_index']) /
+                x_jump_line = BAR_X + (float(self.jukebox.beats[jump_beat_id]['start_index'] - self.jukebox.beats[0]['start_index']) /
                                                     float(self.total_indices)) * get_bar_width(self.window)
 
                 # Highlight selected jump beat in green, other ones in yellow
@@ -559,7 +564,7 @@ class JukeboxController:
                                      - self.jukebox.beats[0]['start_index']) / float(self.total_indices)) * get_bar_width(self.window)
         jump_beat_color = Color.YELLOW.value
         if self.selected_jump_beat_num == -1 or jump_beat_num == 0:
-            self.selected_jump_beat_id = self.selected_jump_beat_id_manual + 1
+            self.selected_jump_beat_id = self.selected_jump_beat_id_manual
             jump_beat_color = Color.FOREST_GREEN.value
 
         pygame.draw.rect(self.window, jump_beat_color,

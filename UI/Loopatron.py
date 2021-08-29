@@ -196,6 +196,26 @@ def play_loop(filepath):
                         jukebox_controller.increment_jump_beat(1)
                     elif (event.key == pygame.K_t):
                         jukebox_controller.toggle_trim()
+                    elif (event.key == pygame.K_1):
+                        jukebox_controller.recluster(clusters = 10)
+                    elif (event.key == pygame.K_2):
+                        jukebox_controller.recluster(clusters = 20)
+                    elif (event.key == pygame.K_3):
+                        jukebox_controller.recluster(clusters = 30)
+                    elif (event.key == pygame.K_4):
+                        jukebox_controller.recluster(clusters = 40)
+                    elif (event.key == pygame.K_5):
+                        jukebox_controller.recluster(clusters = 50)
+                    elif (event.key == pygame.K_6):
+                        jukebox_controller.recluster(clusters = 60)
+                    elif (event.key == pygame.K_7):
+                        jukebox_controller.recluster(clusters = 70)
+                    elif (event.key == pygame.K_8):
+                        jukebox_controller.recluster(clusters = 80)
+                    elif (event.key == pygame.K_9):
+                        jukebox_controller.recluster(clusters = 90)
+                    elif (event.key == pygame.K_0):
+                        jukebox_controller.recluster(clusters = 0)
                     elif (event.key == pygame.K_e):
                         jukebox_controller.export_brstm()
                     elif (event.key == pygame.K_o):

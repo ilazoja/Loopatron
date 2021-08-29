@@ -175,7 +175,7 @@ class InfiniteJukebox(object):
 
 
         if use_cache and os.path.isfile(os.path.join(CONFIG['cacheDir'], Path(filepath).stem + '.csv')):
-            self.__evecs = np.array([])
+            self.evecs = np.array([])
             self.__load_cache()
         else:
             if do_async == True:
@@ -210,10 +210,10 @@ class InfiniteJukebox(object):
                 # 'duration': beat['duration']})
 
         if (self.time_elapsed > 0) and cache_evecs: # don't save evecs if jukebox was loaded from cache
-            np.save(os.path.join(CONFIG['cacheDir'], Path(self.filepath).stem + '.npy'), self.__evecs)
+            np.save(os.path.join(CONFIG['cacheDir'], Path(self.filepath).stem + '.npy'), self.evecs)
 
     def __load_cache(self):
-        beats = []
+        self.beats = []
         with open(os.path.join(CONFIG['cacheDir'], Path(self.filepath).stem + '.csv'), newline='') as csvfile:
             reader = csv.DictReader(csvfile)
             for i, beat in enumerate(reader):
@@ -228,7 +228,7 @@ class InfiniteJukebox(object):
                     self.__start_beat += start_index_diff
                     clusters = int(beat['cluster'])
                 elif i >= start_index_diff + 2:
-                    beats.append({'start_index': int(beat['start_index']),
+                    self.beats.append({'start_index': int(beat['start_index']),
                                   'cluster': int(beat['cluster'])})#,
                                   #'id': i})  # ,
                     # 'stop_index': beat['stop_index'],
@@ -244,70 +244,59 @@ class InfiniteJukebox(object):
         self.raw_audio = (y * np.iinfo(np.int16).max).astype(np.int16).T.copy(order='C')
         self.sample_rate = sr
 
-        total_indices = y.shape[-1]
+        if os.path.isfile(os.path.join(CONFIG['cacheDir'], Path(self.filepath).stem + '.npy')):
+            self.evecs = np.load(os.path.join(CONFIG['cacheDir'], Path(self.filepath).stem + '.npy'))
 
-        if os.path.isfile(os.path.join(CONFIG['cacheDir'], Path(self.filepath).stem + '.npy')) and (self.clusters != 0) and (self.clusters != clusters): # if num of clusters config was set and is different from what was saved
-            self.__evecs = np.load(os.path.join(CONFIG['cacheDir'], Path(self.filepath).stem + '.npy'))
+        if self.clusters == 0: # if 0 in config, use what was saved
+            self.clusters = clusters
+        self.recompute_beat_array(clusters)
 
-            # cumulative normalization is needed for symmetric normalize laplacian eigenvectors
-            Cnorm = np.cumsum(self.__evecs ** 2, axis=1) ** 0.5
+        self.time_elapsed = -1
 
-            # If we want k clusters, use the first k normalized eigenvectors.
-            # Fun exercise: see how the segmentation changes as you vary k
+    def recompute_beat_array(self, clusters):
 
-            self.__report_progress(.9, "clustering...")
+        if (self.clusters != clusters): # if num of clusters different from what was saved
 
-            if self.clusters < 0: # pass in less than 0 to recompute best cluster
-                if self._use_v1:
-                    self.clusters, seg_ids = self.__compute_best_cluster(self.__evecs, Cnorm)
-                else:
-                    self.clusters, seg_ids = self.__compute_best_cluster_with_sil(self.__evecs, Cnorm)
-            else:
-                k = self.clusters
+            seg_ids, self.clusters = self.__compute_cluster(self.evecs, clusters, self._use_v1)
 
-                self.__report_progress(.91, "using %d clusters" % self.clusters)
-
-                X = self.__evecs[:, :k] / Cnorm[:, k - 1:k]
-
-                seg_ids = sklearn.cluster.KMeans(n_clusters=k, max_iter=1000,
-                                                 random_state=0, n_init=1000, n_jobs=-1).fit_predict(X)
-
-            for i, beat in enumerate(beats):
+            for i, beat in enumerate(self.beats):
                 beat['cluster'] = seg_ids[i]
         else:
             self.clusters = clusters
 
-        for i, beat in enumerate(beats):
+        total_indices = self.raw_audio.shape[0]
+
+        for i, beat in enumerate(self.beats):
             beat['id'] = i
             beat['start'] = (beat['start_index']/total_indices) * self.duration
-            beat['quartile'] = beat['id'] // (len(beats) / 4.0)
+            beat['quartile'] = beat['id'] // (len(self.beats) / 4.0)
 
-            if i == (len(beats) - 1):
+            if i == (len(self.beats) - 1):
                 beat['stop_index'] = total_indices
-                beat['next'] = beats[0]['id']
+                beat['next'] = self.beats[0]['id']
                 beat['duration'] = self.duration - beat['start']
             else:
-                beat['stop_index']  = beats[i + 1]['start_index']
+                beat['stop_index']  = self.beats[i + 1]['start_index']
                 beat['next'] = i + 1
-                beat['duration'] = ((beats[i + 1]['start_index'] - beat['start_index']) / total_indices) * self.duration
+                beat['duration'] = ((self.beats[i + 1]['start_index'] - beat['start_index']) / total_indices) * self.duration
 
             if i == 0:
                 beat['segment'] = 0
                 beat['is'] = 0
             else:
-                if beat['cluster'] != beats[i - 1]['cluster']:
-                    beat['segment'] = beats[i - 1]['segment'] + 1
+                if beat['cluster'] != self.beats[i - 1]['cluster']:
+                    beat['segment'] = self.beats[i - 1]['segment'] + 1
                     beat['is'] = 0
                 else:
-                    beat['segment'] = beats[i - 1]['segment']
-                    beat['is'] = beats[i - 1]['is'] + 1
+                    beat['segment'] = self.beats[i - 1]['segment']
+                    beat['is'] = self.beats[i - 1]['is'] + 1
 
             beat['buffer'] = self.raw_audio[beat['start_index']: beat['stop_index']]
 
-        for beat in beats[:-1]:
-            jump_candidates = [bx['id'] for bx in beats[:beat['id']] if  # only consider beats that are earlier
-                               (bx['cluster'] == beats[beat['next']]['cluster']) and
-                               (bx['is'] == beats[beat['next']]['is']) and
+        for beat in self.beats[:-1]:
+            jump_candidates = [bx['id'] for bx in self.beats[:beat['id']] if  # only consider beats that are earlier
+                               (bx['cluster'] == self.beats[beat['next']]['cluster']) and
+                               (bx['is'] == self.beats[beat['next']]['is']) and
                                # (bx['id'] % 4 == beats[beat['next']]['id'] % 4) and # removed as was limiting loop points
                                (bx['segment'] != beat['segment']) and
                                (bx['id'] != beat['next'])]
@@ -317,10 +306,7 @@ class InfiniteJukebox(object):
             else:
                 beat['jump_candidates'] = []
 
-        beats[-1]['jump_candidates'] = []
-
-        self.beats = beats
-        self.time_elapsed = -1
+        self.beats[-1]['jump_candidates'] = []
 
     def __process_audio(self):
 
@@ -465,37 +451,10 @@ class InfiniteJukebox(object):
         # This can help smooth over small discontinuities
         evecs = scipy.ndimage.median_filter(evecs, size=(9, 1))
 
-        self.__evecs = evecs #save intermediate step for caching
+        self.evecs = evecs #save intermediate step for caching
 
-
-        # cumulative normalization is needed for symmetric normalize laplacian eigenvectors
-        Cnorm = np.cumsum(evecs**2, axis=1)**0.5
-
-        # If we want k clusters, use the first k normalized eigenvectors.
-        # Fun exercise: see how the segmentation changes as you vary k
-
-        self.__report_progress( .5, "clustering...")
-
-        # if a value for clusters wasn't passed in, then we need to auto-cluster
-
-        if self.clusters <= 0:
-
-            # if we've been asked to use the original auto clustering alogrithm, otherwise
-            # use the new and improved one that accounts for silhouette scores.
-
-            if self._use_v1:
-                self.clusters, seg_ids = self.__compute_best_cluster(evecs, Cnorm)
-            else:
-                self.clusters, seg_ids = self.__compute_best_cluster_with_sil(evecs, Cnorm)
-
-        else: # otherwise, just use the cluster value passed in
-            k = self.clusters
-
-            self.__report_progress( .51, "using %d clusters" % self.clusters)
-
-            X = evecs[:, :k] / Cnorm[:, k-1:k]
-            seg_ids = sklearn.cluster.KMeans(n_clusters=k, max_iter=1000,
-                                             random_state=0, n_init=1000, n_jobs=-1).fit_predict(X)
+        # Cluster beats
+        seg_ids, self.clusters = self.__compute_cluster(self.evecs, self.clusters, self._use_v1)
 
         # Get the amplitudes and beat-align them
         self.__report_progress( .6, "getting amplitudes")
@@ -687,6 +646,40 @@ class InfiniteJukebox(object):
         """
         if self.__progress_callback:
             self.__progress_callback(pct_done, message, self.filepath)
+
+    def __compute_cluster(self, evecs, clusters, use_v1 = False):
+
+        # cumulative normalization is needed for symmetric normalize laplacian eigenvectors
+        Cnorm = np.cumsum(evecs ** 2, axis=1) ** 0.5
+
+        # If we want k clusters, use the first k normalized eigenvectors.
+        # Fun exercise: see how the segmentation changes as you vary k
+
+        self.__report_progress(.5, "clustering...")
+
+        # if a value for clusters wasn't passed in, then we need to auto-cluster
+        if clusters <= 0:
+
+            # if we've been asked to use the original auto clustering algorithm, otherwise
+            # use the new and improved one that accounts for silhouette scores.
+
+            if use_v1:
+                clusters, seg_ids = self.__compute_best_cluster(evecs, Cnorm)
+            else:
+                clusters, seg_ids = self.__compute_best_cluster_with_sil(evecs, Cnorm)
+        else:
+            # otherwise, just use the cluster value passed in
+
+            k = clusters
+
+            self.__report_progress(.51, "using %d clusters" % clusters)
+
+            X = evecs[:, :k] / Cnorm[:, k - 1:k]
+
+            seg_ids = sklearn.cluster.KMeans(n_clusters=k, max_iter=1000,
+                                             random_state=0, n_init=1000, n_jobs=-1).fit_predict(X)
+
+        return seg_ids, clusters
 
     def __compute_best_cluster_with_sil(self, evecs, Cnorm):
 
