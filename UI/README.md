@@ -1,43 +1,21 @@
-# Remixatron
-(c) 2017-2021 - Dave Rensin - drensin@gmail.com  
+# Loopatron
 
-__NOTE:__ This is a CLI. If you would prefer a GUI, please see [here](https://github.com/drensin/Remixatron/tree/master/Web%20UI). Also note that Windows users are reporting dependency problems with the CLI. If you use Windows, you should definitely use the GUI.
+This python program is designed to help find loops in songs. The program will output potential loops and through the user interface, the user can select the desired looping points by listening to the audio playback with the selected loops. Through the use of LoopingAudioConverter, the user can export the song as A brstm, a looping audio format used by games like Super Smash Brothers Brawl.
 
-This program attempts to recreate the wonderful Infinite Jukebox (http://www.infinitejuke.com) on the command line in Python. It groups musically similar beats of a song into clusters and then plays a random path through the song that makes musical sense, but not does not repeat. It will do this infinitely.
-***
-# Demo Video
-Click the image below to see a short video of the code remixing Billy Joel's _For the Longest Time_.
-
-[![Remixatron Demo](https://img.youtube.com/vi/1HYLoJaCb_g/maxresdefault.jpg)](https://www.youtube.com/watch?v=1HYLoJaCb_g&feature=youtu.be "Remixatron Demo")
 ***
 # Installation
+Note: This application was tested on Python 3.7
 
 pip install --upgrade pip  
-pip install --user -r requirements.txt  
+pip install -r requirements.txt  
+
+Then open Loopatron.json and set lacDir to the LoopingAudioConverter folder
 ***
 # Usage
 
-    usage: infinite_jukebox.py [-h] [-clusters N] [-start start_beat]
-                               [-save label] [-duration seconds] [-verbose]
-                               filename
+Loopatron.py 
 
-Creates an infinite remix of an audio file by finding musically similar beats and computing a randomized play path through them. The default choices should be suitable for a variety of musical styles. This work is inspired by the Infinite Jukebox (http://www.infinitejuke.com) project creaeted by Paul Lamere (paul@spotify.com)
-
-    positional arguments:
-      filename           the name of the audio file to play. Most common audio
-                         types should work. (mp3, wav, ogg, etc..)
-
-    optional arguments:
-      -h, --help         show this help message and exit
-      -clusters N        set the number of clusters into which we want to bucket
-                         the audio. Default: 0 (automatically try to find the
-                         optimal cluster value.)
-      -start start_beat  start on a specific beat. Default: 1
-      -save label        Save the remix to a file, rather than play it. Will
-                         create file named [label].wav
-      -duration seconds  length (in seconds) to save. Must use with -save.
-                         Default: 180
-      -verbose           print extra info about the track and play vector
+When running this program, you will be greeted with a open file prompt, choose the song you'd like to loop. It will then begin to process the song. When finished, you should see the following screen:
 
 **Example 1:**
 
@@ -120,3 +98,12 @@ Example: Playing the first 32 beats of a song:
         snd = mixer.Sound(buffer=beat['buffer'])
         channel.queue(snd)
         time.sleep(beat['duration'])
+        
+# Acknowledgements
+B. McFee and D. Ellis for the [Laplacian Segmentation](https://librosa.org/librosa_gallery/auto_examples/plot_segmentation.html#sphx-glr-auto-examples-plot-segmentation-py) method
+
+drensin for [Remixatron](https://github.com/drensin/Remixatron)
+
+libertyernie for [LoopingAudioConverter](https://github.com/libertyernie/LoopingAudioConverter) as well as contributors to its dependencies
+
+JGiubardo for the [Looper](https://github.com/JGiubardo/Looper) integration with LoopingAudioConverter
