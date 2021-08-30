@@ -1,6 +1,6 @@
 # Loopatron
 
-This python program is designed to help find loops in songs. The program will output potential loops and through the user interface, the user can select the desired looping points by listening to the audio playback with the selected loops. Through the use of LoopingAudioConverter, the user can export the song as A brstm, a looping audio format used by games like Super Smash Brothers Brawl.
+This python program is designed to help find loops in songs. The program will output potential loops and through the user interface, the user can select the desired looping points by listening to the audio playback with the selected loops. Through the use of LoopingAudioConverter, the user can export the song as a brstm, a looping audio format used by games like Super Smash Brothers Brawl.
 
 ***
 # Installation
@@ -61,7 +61,7 @@ There are two different types of caches, the general beats cache and the evecs c
 
 **Config**
 
-[Loopatron.json](Loopatron.json) has various config options such as setting the max sample rate of the output and setting the directories.
+[Loopatron.json](Loopatron.json) has various config options such as setting the max sample rate of the output and setting directories.
 
 
 
