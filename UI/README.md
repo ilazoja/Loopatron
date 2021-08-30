@@ -44,6 +44,7 @@ A/D: Adjust volume of audio playback
 W/S: Adjust amplitude of brstm output
 
 
+B: Set playback position to last set playback position
 
 T: Toggle trim start of song in output
 
