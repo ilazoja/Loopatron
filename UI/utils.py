@@ -93,7 +93,7 @@ def notify(message):
         toaster = ToastNotifier()
         toaster.show_toast("Loopatron",
                            message,
-                           icon_path=None,
+                           icon_path='',
                            duration=10)
 
 def prompt_file(select_multiple = False):
@@ -178,10 +178,10 @@ def run_lac(filename, sample_rate, amplify_ratio, output_dir = CONFIG['outputDir
     if is_lac_present(lac_dir, lac_exe):
         if os.path.isfile(os.path.join(lac_dir, lac_config_xml)):
             edit_lac_xml(os.path.join(lac_dir, lac_config_xml), sample_rate, amplify_ratio, output_dir)
-            subprocess.run([os.path.join(lac_dir, lac_exe), "--auto", os.path.join(lac_dir, lac_config_xml), filename], cwd = lac_dir)
+            subprocess.run([os.path.join(lac_dir, lac_exe), "--auto", os.path.abspath(os.path.join(lac_dir, lac_config_xml)), os.path.abspath(filename)], cwd = lac_dir)
             return os.path.isfile(os.path.join(output_dir, Path(filename).stem + '.brstm'))
         else:
-            subprocess.run([os.path.join(lac_dir, lac_exe), "--auto", filename], cwd = lac_dir)
+            subprocess.run([os.path.join(lac_dir, lac_exe), "--auto", os.path.abspath(filename)], cwd = lac_dir)
             return os.path.isfile(os.path.join(output_dir, Path(filename).stem + '.brstm'))
 
     return False

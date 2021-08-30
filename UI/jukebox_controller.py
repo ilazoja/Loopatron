@@ -361,7 +361,7 @@ class JukeboxController:
                 export_trimmed_wav(filepath, self.jukebox.raw_audio, self.jukebox.sample_rate, start_offset)
                 write_points_to_file(jump_offset, stop_offset, filepath, CONFIG['lacDir'])
                 self.export_success = run_lac(filepath, self.jukebox.sample_rate, self.amplify_ratio)
-                if not self.export_sucess:
+                if self.export_success:
                     os.remove(filepath)
 
             else:
@@ -757,7 +757,6 @@ class JukeboxController:
     ## Config JSON: Total Clusters to try argument, max sample rate
 
     ## Opening multiple files at start -> cache mode, cache selected beats for later, next time you open beat individually will load cache (have status say loaded cache instead of processed)
-    # TODO: Check , in paths
     # Update config before running jukebox, if cluster is not 0 then re cluster even with cache, display cluster
     # Have an always cache mode in json config and saveEvecs in json config
     # TODO: investigate best compression/format to save?
@@ -767,12 +766,10 @@ class JukeboxController:
     # TODO: Create build commands/script to copy and paste dependent files after building with pyinstaller e.g. Loopatron.json, font file, LoopingAudioConverter
     # Put font and Looping audio path in json
 
-    # TODO: Modify volume (either through amplify in LAC or modifying raw_audio array)
+    # Modify volume (through amplify in LAC)
 
     ## Check if windows and LoopingAudioConverter.exe is present, if not just append to loop.txt (replace if entry exists)
 
     # TODO: Investigate clipping (maybe loop in middle of beat?)
 
-    # TODO: Set clusters in main window (just save npy cache for current beat then, remove npy files when program opens / closes if saveEnums = False) But what about already cached, need to recalculate?
-
-    # TODO: Save cache button, reset button (if evec doesn't exist)
+    # Set clusters in main window (just save npy cache for current beat then, remove npy files when program opens / closes if saveEnums = False) But what about already cached, need to recalculate?
