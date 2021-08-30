@@ -17,13 +17,57 @@ Loopatron.py
 
 When running this program, you will be greeted with a open file prompt, choose the song you'd like to loop. It will then begin to process the song. When finished, you should see the following screen:
 
+<img src='resources/DemoLabels.png'/>
+
+The program segments the songs into beats. The beats highlighted in blue are beats that are potential loop points. Setting the end loop position to these beats will automatically show potential start loop positions. The current start loop position is highlighted in green, whereas all other potential start loop positions are highlighted in yellow and can be cycled through. It is also possible to manually set a start loop position, holding shift will highlight beats that belong to the same cluster as the end loop position. 
+
+**Controls**
+
+_On the main song bar_
+
+Left Click: Set playback position of song
+
+Right Click: Set end loop point position
+
+Shift + Right Click: Manually set start loop point position
+
+Shift + Left Click (while Trim Start is toggled): Set trim point of song 
+
+_Anywhere_
+
+Left / Right: Cycle through potential start loop points
+
+Up / Down: Modify number of clusters (then press Q to recalculate, only available if evecs are present)
+
+A/D: Adjust volume of audio playback
+
+W/S: Adjust amplitude of brstm output
+
+
+
+T: Toggle trim start of song in output
+
+C: Toggle whether to cache song (to skip processing if want to revisit song later)
+
+E: Export loop points and create brstm
+
+O: Open new song
+
+**Cache now, select loop points later**
+
+If you select multiple songs on the file open prompt, the program will cache the songs so that they can be opened later without any processing / less wait time.
+
+**Config**
+
+Loopatron.json has various config options such as setting the max sample rate of the output and setting the directories.
+
 **Example 1:**
 
 Play a song infinitely.
 
     $ python infinite_jukebox.py i_cant_go_for_that.mp3
 
-<img src='images/playback.png'/>
+<img src='resources/playback.png'/>
 
 *Clusters* are buckets of musical similarity. Every beat belongs to exactly *one* cluster. Beats in the same cluster are musically similar -- ie. have similar pitch or timbre. When jumps are computed they always try to match clusters.
 
@@ -98,7 +142,9 @@ Example: Playing the first 32 beats of a song:
         snd = mixer.Sound(buffer=beat['buffer'])
         channel.queue(snd)
         time.sleep(beat['duration'])
-        
+
+***
+
 # Acknowledgements
 B. McFee and D. Ellis for the [Laplacian Segmentation](https://librosa.org/librosa_gallery/auto_examples/plot_segmentation.html#sphx-glr-auto-examples-plot-segmentation-py) method
 
