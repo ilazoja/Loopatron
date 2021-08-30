@@ -1,6 +1,6 @@
 # Loopatron
 
-This python program is designed to help find loops in songs. The program will output potential loops and through the user interface, the user can select the desired looping points by listening to the audio playback with the selected loops. Through the use of [LoopingAudioConverter](https://github.com/libertyernie/LoopingAudioConverter), the user can export the song as a brstm, a looping audio format used by games like Super Smash Brothers Brawl.
+This python program is designed to help find loops in songs. The program will output potential loops and through the user interface, the user can select the desired looping points by listening to the audio playback with the selected loops. Through the use of [LoopingAudioConverter](https://github.com/libertyernie/LoopingAudioConverter), the user can export the song as a brstm, a looping audio format used by games like Super Smash Bros. Brawl.
 
 ***
 # Installation
