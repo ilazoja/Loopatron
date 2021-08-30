@@ -77,6 +77,16 @@ class Color(Enum):
     DARK_ORANGE = (255, 140, 0)
     PURPLE = (128, 0, 128)
     VIOLET = (238,130,238)
+    GOLDENROD = (218,165,32)
+    LIGHT_SKY_BLUE = (135,206,250)
+    DODGE_BLUE = (30,144,255)
+    DARK_SLATE_BLUE = (72,61,139)
+    PERU = (205,133,63)
+
+class CacheOptions(Enum):
+    DISCARD = 0,
+    KEEP_CACHE = 1,
+    KEEP_CACHE_AND_EVECS = 2
 
 def notify(message):
     if os.name == 'nt':
@@ -119,7 +129,7 @@ def draw_status_message_and_update(main_status, sub_status, font, sub_status_col
 def get_timestamp():
     return datetime.now().strftime("%H:%M:%S")
 
-def edit_lac_xml(xml_path, sample_rate, output_dir):
+def edit_lac_xml(xml_path, sample_rate, amplify_ratio, output_dir):
 
     tree = ET.parse(xml_path)
     root = tree.getroot()
@@ -127,6 +137,9 @@ def edit_lac_xml(xml_path, sample_rate, output_dir):
     # modifying an attribute
     sample_rate_node = root.find('SampleRate')
     sample_rate_node.text = str(min(sample_rate, CONFIG['maxSampleRate']))
+
+    amplify_ratio_node = root.find('AmplifyRatio')
+    amplify_ratio_node.text = "{:2.3f}".format(amplify_ratio)
 
     output_node = root.find('OutputDir')
     output_node.text = os.path.abspath(output_dir)
@@ -157,14 +170,14 @@ def write_points_to_file(jump_offset, stop_offset, filepath, lac_dir = CONFIG['l
         output.write("%d " % (stop_offset))
         output.write(os.path.basename(filepath))
 
-def run_lac(filename, sample_rate, output_dir = CONFIG['outputDir'], lac_dir = CONFIG['lacDir'], lac_exe = LAC_EXE, lac_config_xml = CONFIG['lacXML']):
+def run_lac(filename, sample_rate, amplify_ratio, output_dir = CONFIG['outputDir'], lac_dir = CONFIG['lacDir'], lac_exe = LAC_EXE, lac_config_xml = CONFIG['lacXML']):
 
     if os.path.isfile(os.path.join(output_dir, Path(filename).stem + '.brstm')):
         os.remove(os.path.join(output_dir, Path(filename).stem + '.brstm'))
 
     if is_lac_present(lac_dir, lac_exe):
         if os.path.isfile(os.path.join(lac_dir, lac_config_xml)):
-            edit_lac_xml(os.path.join(lac_dir, lac_config_xml), sample_rate, output_dir)
+            edit_lac_xml(os.path.join(lac_dir, lac_config_xml), sample_rate, amplify_ratio, output_dir)
             subprocess.run([os.path.join(lac_dir, lac_exe), "--auto", os.path.join(lac_dir, lac_config_xml), filename], cwd = lac_dir)
             return os.path.isfile(os.path.join(output_dir, Path(filename).stem + '.brstm'))
         else:

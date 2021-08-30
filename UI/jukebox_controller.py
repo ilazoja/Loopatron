@@ -46,6 +46,10 @@ class JukeboxController:
         self.selected_start_beat_id = 0
         self.trim_start = False
 
+        self.selected_num_clusters = jukebox.clusters
+
+        self.amplify_ratio = 1.00
+
         self.debounce = False
 
         self.export_timestamp = None
@@ -127,11 +131,70 @@ class JukeboxController:
 
         self.last_time = current_time
 
-    def recluster(self, clusters):
-        if self.jukebox.evecs.size > 0:
+    def recluster(self):
+        if (self.jukebox.evecs.size > 0) and (self.selected_num_clusters != self.jukebox.clusters):
             self.channel.stop()
             self.is_paused = True
-            self.jukebox.recompute_beat_array(clusters)
+            self.jukebox.recompute_beat_array(self.selected_num_clusters)
+
+    def select_cluster(self, clusters):
+        if self.jukebox.evecs.size > 0:
+            self.selected_num_clusters = max(0, clusters)
+
+    def cluster_buttons(self, click, mx, my):
+
+        y = self.window.get_height() - 2 * BUTTON_WIDTH - 20 - BAR_HEIGHT
+
+        if self.jukebox.evecs.size > 0:
+
+            x = BAR_X + 110
+            w = BUTTON_WIDTH / 2
+            increment_left_button_box = pygame.Rect(x, y, w, w)
+            if increment_left_button_box.collidepoint((mx, my)):
+                if click == (1, 0, 0):
+                    if not self.debounce:
+                        self.select_cluster(self.selected_num_clusters - 1)
+                    self.debounce = True
+                else:
+                    self.debounce = False
+
+            pygame.draw.rect(self.window, Color.GOLDENROD.value, increment_left_button_box)
+            draw_text("v", self.font, Color.BLACK.value, self.window, x + w/2, y + 5)
+
+            x += w
+            increment_right_button_box = pygame.Rect(x, y, w, w)
+            if increment_right_button_box.collidepoint((mx, my)):
+                if click == (1, 0, 0):
+                    if not self.debounce:
+                        self.select_cluster(self.selected_num_clusters + 1)
+                    self.debounce = True
+                else:
+                    self.debounce = False
+
+            pygame.draw.rect(self.window, Color.GOLDENROD.value, increment_right_button_box)
+            draw_text("^", self.font, Color.BLACK.value, self.window, x + w/2, y + 5)
+
+            pygame.draw.rect(self.window, Color.BLACK.value, [x, y, SCROLL_WIDTH, w])
+
+        x = 20
+        w = BUTTON_WIDTH * (19 / 10)
+        h = BUTTON_WIDTH / 2
+        if self.selected_num_clusters != self.jukebox.clusters:
+
+            cluster_button_box = pygame.Rect(x, y, w, h)
+            if cluster_button_box.collidepoint((mx, my)):
+                if click == (1, 0, 0):
+                    if not self.debounce:
+                        self.recluster()
+                    self.debounce = True
+                else:
+                    self.debounce = False
+            pygame.draw.rect(self.window, Color.GRAY.value, cluster_button_box)
+            draw_text(f"[Q]lusters: {self.selected_num_clusters}", self.font, Color.GOLDENROD.value, self.window, x, y + 5)
+
+
+        else:
+            draw_text(f"Clusters: {self.selected_num_clusters}", self.font, Color.WHITE.value, self.window, x, y + 5)
 
     def get_verbose_info(self, verbose):
         """Show statistics about the song and the analysis"""
@@ -201,9 +264,6 @@ class JukeboxController:
         draw_text(f"Start Loop: {jump_offset}", self.font, jump_text_color, self.window, x, y + 15)
         draw_text(f"End Loop: {stop_offset}", self.font, loop_text_color, self.window, x, y + 30)
 
-        draw_text(f"Avg Amplitude: {self.jukebox.avg_amplitude:3.4f}", self.font, Color.WHITE.value, self.window, BAR_X + get_bar_width(self.window) / 4 + 10, y)
-        draw_text(f"Clusters: {self.jukebox.clusters}", self.font, Color.WHITE.value, self.window, BAR_X + get_bar_width(self.window) / 4 + 10, y + 15)
-
     def draw_status_text(self):
         if self.export_timestamp:
             if self.export_success:
@@ -216,6 +276,43 @@ class JukeboxController:
             else:
                 draw_text(f'Loaded from cache', self.font, Color.GREEN.value, self.window,
                           20, 40)
+
+    def change_keep_cache_option(self):
+        if self.jukebox.cache_option == CacheOptions.DISCARD:
+            self.jukebox.cache_option = CacheOptions.KEEP_CACHE
+        elif self.jukebox.cache_option == CacheOptions.KEEP_CACHE:
+            if self.jukebox.evecs.size > 0:
+                self.jukebox.cache_option = CacheOptions.KEEP_CACHE_AND_EVECS
+            else:
+                self.jukebox.cache_option = CacheOptions.DISCARD
+        else:
+            self.jukebox.cache_option = CacheOptions.DISCARD
+
+    def keep_cache_button(self, click, mx, my):
+        x = self.window.get_width() - BUTTON_WIDTH - 10
+        y = self.window.get_height() - 2 * BUTTON_WIDTH - 20 - BAR_HEIGHT
+        w = BUTTON_WIDTH
+        h = BUTTON_WIDTH / 2
+
+        open_button_box = pygame.Rect(x, y, w, h)
+
+        if open_button_box.collidepoint((mx, my)):
+            if click == (1, 0, 0):
+                if not self.debounce:
+                    self.change_keep_cache_option()
+                self.debounce = True
+            else:
+                self.debounce = False
+
+        button_color = Color.LIGHT_SKY_BLUE.value
+        if self.jukebox.cache_option == CacheOptions.KEEP_CACHE:
+            button_color = Color.DODGE_BLUE.value
+        elif self.jukebox.cache_option == CacheOptions.KEEP_CACHE_AND_EVECS:
+            button_color = Color.DARK_SLATE_BLUE.value
+
+        pygame.draw.rect(self.window, button_color, open_button_box)
+
+        draw_text("[C]ache", self.font, Color.WHITE.value, self.window, x, y)
 
     def select_file(self):
         self.channel.stop()  # Stop before opening prompt otherwise playback will speed up
@@ -263,7 +360,7 @@ class JukeboxController:
 
                 export_trimmed_wav(filepath, self.jukebox.raw_audio, self.jukebox.sample_rate, start_offset)
                 write_points_to_file(jump_offset, stop_offset, filepath, CONFIG['lacDir'])
-                self.export_success = run_lac(filepath, self.jukebox.sample_rate)
+                self.export_success = run_lac(filepath, self.jukebox.sample_rate, self.amplify_ratio)
                 if not self.export_sucess:
                     os.remove(filepath)
 
@@ -273,7 +370,7 @@ class JukeboxController:
                 stop_offset += self.jukebox.start_index
 
                 write_points_to_file(jump_offset, stop_offset, filepath, CONFIG['lacDir'])
-                self.export_success = run_lac(filepath, self.jukebox.sample_rate)
+                self.export_success = run_lac(filepath, self.jukebox.sample_rate, self.amplify_ratio)
 
             self.export_timestamp = get_timestamp()
             self.create_and_play_playback_buffer()
@@ -335,7 +432,6 @@ class JukeboxController:
             self.channel.unpause()
             self.is_paused = False
 
-
     def play_button(self, click, mx, my):
 
         ## Play / pause
@@ -358,7 +454,6 @@ class JukeboxController:
         else:
             pygame.draw.rect(self.window, Color.RED.value, play_button_box)
             draw_text("[SPACE]", self.font, Color.WHITE.value, self.window, x, y + w / 2)
-
 
     def set_beat_to_last_selected(self):
         if (self.last_selected_beat_id >= 0):
@@ -428,6 +523,51 @@ class JukeboxController:
 
         pygame.draw.rect(self.window, Color.BLACK.value, [x, y, SCROLL_WIDTH, h])
 
+    def increment_amplify_ratio(self, increment):
+        self.amplify_ratio = max(0, self.amplify_ratio + increment)
+
+    def amplify_button(self, click, mx, my):
+        x = BAR_X + get_bar_width(self.window) / 5 + 10
+        y = self.window.get_height() - BUTTON_WIDTH - 10
+
+        draw_text(f"Avg Amplitude: {self.jukebox.avg_amplitude:3.4f}", self.font, Color.WHITE.value, self.window, x, y)
+
+        amplify_color = Color.WHITE.value
+        if self.amplify_ratio != 1:
+            amplify_color = Color.PERU.value
+        draw_text(f"Amplify Ratio: {self.amplify_ratio:3.2f}", self.font, amplify_color, self.window, x, y + 15)
+
+        x += 165
+        w = BUTTON_WIDTH / 2
+
+        increment_amplify_button_box = pygame.Rect(x, y, w, w)
+        if increment_amplify_button_box.collidepoint((mx, my)):
+            if click == (1, 0, 0):
+                if not self.debounce:
+                    self.increment_amplify_ratio(0.05)
+                self.debounce = True
+            else:
+                self.debounce = False
+
+        pygame.draw.rect(self.window, Color.PERU.value, increment_amplify_button_box)
+        draw_text("W", self.font, Color.BLACK.value, self.window, x, y)
+
+        y += BUTTON_WIDTH / 2
+
+        increment_amplify_button_box = pygame.Rect(x, y, w, w)
+        if increment_amplify_button_box.collidepoint((mx, my)):
+            if click == (1, 0, 0):
+                if not self.debounce:
+                    self.increment_amplify_ratio(-0.05)
+                self.debounce = True
+            else:
+                self.debounce = False
+
+        pygame.draw.rect(self.window, Color.PERU.value, increment_amplify_button_box)
+        draw_text("S", self.font, Color.BLACK.value, self.window, x, y)
+
+        pygame.draw.rect(self.window, Color.BLACK.value, [x, y, w, SCROLL_WIDTH])
+
     def set_volume(self, new_volume=1.0):
         new_volume = max(0, min(new_volume, 1.0))
 
@@ -437,19 +577,19 @@ class JukeboxController:
     def volume_slider(self, click, mx, my):
         x = BAR_X
         y = self.window.get_height() - BUTTON_WIDTH - 10
-        w = get_bar_width(self.window) / 4
+        w = get_bar_width(self.window) / 5
         h = BUTTON_WIDTH
         volume_slider_bar = pygame.Rect(BAR_X, y, w, h)
 
         if volume_slider_bar.collidepoint((mx, my)):
             if click == (1, 0, 0):
-                volume = ((mx - BAR_X) / (get_bar_width(self.window)  / 4))
+                volume = ((mx - BAR_X) / w)
                 self.set_volume(volume)
 
         volume_slider_bar = pygame.Rect(x, y + h/4, w, h/4)
         pygame.draw.rect(self.window, Color.GRAY.value, volume_slider_bar)
 
-        x_line = BAR_X + (self.volume) * get_bar_width(self.window)  / 4
+        x_line = BAR_X + (self.volume) * w
 
         pygame.draw.rect(self.window, Color.GRAY.value, [x_line - SCROLL_WIDTH / 2, self.window.get_height() - BUTTON_WIDTH - 10, SCROLL_WIDTH*2, BUTTON_WIDTH])
 
@@ -635,4 +775,4 @@ class JukeboxController:
 
     # TODO: Set clusters in main window (just save npy cache for current beat then, remove npy files when program opens / closes if saveEnums = False) But what about already cached, need to recalculate?
 
-
+    # TODO: Save cache button, reset button (if evec doesn't exist)

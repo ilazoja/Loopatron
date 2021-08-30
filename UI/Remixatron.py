@@ -50,7 +50,7 @@ import os
 from pathlib import Path
 import csv
 
-from utils import CONFIG
+from utils import CONFIG, CacheOptions
 
 def smap(f):
     return f()
@@ -172,7 +172,7 @@ class InfiniteJukebox(object):
         self.__max_clusters = max_clusters
         self._extra_diag = ""
         self._use_v1 = use_v1
-
+        self.cache_option = CacheOptions.DISCARD
 
         if use_cache and os.path.isfile(os.path.join(CONFIG['cacheDir'], Path(filepath).stem + '.csv')):
             self.evecs = np.array([])
@@ -188,13 +188,14 @@ class InfiniteJukebox(object):
 
 
 
+
     def save_cache(self, cache_evecs = False):
         os.makedirs(CONFIG['cacheDir'], exist_ok=True)
         with open(os.path.join(CONFIG['cacheDir'], Path(self.filepath).stem + '.csv'), 'w', newline='') as csvfile:
             fieldnames = ['start_index', 'cluster']  # , 'stop_index', 'start', 'duration' ]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
-            writer.writerow({'start_index': self.filepath,  # jukebox.start_index,
+            writer.writerow({'start_index': "",  # jukebox.filename,
                              'cluster': self.avg_amplitude})
             writer.writerow({'start_index': self.__start_beat,
                              'cluster': self.clusters})
@@ -209,8 +210,19 @@ class InfiniteJukebox(object):
                 # 'start': beat['start'],
                 # 'duration': beat['duration']})
 
-        if (self.time_elapsed > 0) and cache_evecs: # don't save evecs if jukebox was loaded from cache
+        if cache_evecs:
             np.save(os.path.join(CONFIG['cacheDir'], Path(self.filepath).stem + '.npy'), self.evecs)
+
+    def remove_cache(self):
+        songname = Path(self.filepath).stem
+        if self.cache_option == self.cache_option.DISCARD:
+            if os.path.isfile(os.path.join(CONFIG['cacheDir'], songname + '.csv')):
+                os.remove(os.path.join(CONFIG['cacheDir'], songname + '.csv'))
+            if os.path.isfile(os.path.join(CONFIG['cacheDir'], songname + '.npy')):
+                os.remove(os.path.join(CONFIG['cacheDir'], songname + '.npy'))
+        elif self.cache_option == self.cache_option.KEEP_CACHE:
+            if os.path.isfile(os.path.join(CONFIG['cacheDir'], songname + '.npy')):
+                os.remove(os.path.join(CONFIG['cacheDir'], songname + '.npy'))
 
     def __load_cache(self):
         self.beats = []
@@ -218,8 +230,8 @@ class InfiniteJukebox(object):
             reader = csv.DictReader(csvfile)
             for i, beat in enumerate(reader):
                 if i == 0:
-                    if beat['start_index'] != self.filepath:
-                        break
+                    #if beat['start_index'] != self.filepath:
+                    #    break
                     self.__report_progress(.8, "loading from cache...")
                     self.avg_amplitude = float(beat['cluster'])
 

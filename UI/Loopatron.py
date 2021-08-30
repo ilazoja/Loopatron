@@ -54,7 +54,7 @@ def NoCallback(pct_complete, message, filepath):
 def UpdateMessageCallback(pct_complete, message, filepath):
     draw_status_message_and_update(f'Loopatron - {os.path.basename(filepath)}', f'{str(pct_complete*100)}% - {message}', font, Color.DARK_ORANGE.value, window)
 
-def cleanup(current_songname = None, keep_cache = False, keep_evec_cache = False):
+def cleanup():
     """Cleanup before exiting"""
 
     #if not window:
@@ -67,13 +67,6 @@ def cleanup(current_songname = None, keep_cache = False, keep_evec_cache = False
     #print(w_str.rstrip())
     #print
 
-    if current_songname:
-        if not keep_cache:
-            if os.path.isfile(os.path.join(CONFIG['cacheDir'], current_songname + '.csv')):
-                os.remove(os.path.join(CONFIG['cacheDir'], current_songname + '.csv'))
-        if not keep_evec_cache:
-            if os.path.isfile(os.path.join(CONFIG['cacheDir'], current_songname + '.npy')):
-                os.remove(os.path.join(CONFIG['cacheDir'], current_songname + '.npy'))
 
     mixer.quit()
 
@@ -98,11 +91,24 @@ def initialize_jukebox(filepath, do_async = False):
     mixer.quit()
 
     config = get_config()
+
     jukebox = InfiniteJukebox(filepath=filepath, start_beat=0, use_cache = True,
                               clusters=config['clusters'], max_clusters = config['maxClusters'],
                               progress_callback=UpdateMessageCallback, do_async=do_async, use_v1=config['useV1'])
 
-    jukebox.save_cache(cache_evecs = True)
+
+    if (jukebox.time_elapsed > 0):  # don't save if jukebox was loaded from cache
+        jukebox.save_cache(cache_evecs = True)
+        keep_cache = config['alwaysCache']  # keep cache if config has always cache
+        keep_evec_cache = (keep_cache and config['cacheEvecs'])
+        if keep_evec_cache:
+            jukebox.cache_option = CacheOptions.KEEP_CACHE_AND_EVECS
+        elif keep_cache:
+            jukebox.cache_option = CacheOptions.KEEP_CACHE
+    else:
+        jukebox.cache_option = CacheOptions.KEEP_CACHE  # keep cache if jukebox was retrieved from cache
+        if jukebox.evecs.size > 0:
+            jukebox.cache_option = CacheOptions.KEEP_CACHE_AND_EVECS
 
     if not do_async:
         # it's important to make sure the mixer is setup with the
@@ -137,7 +143,8 @@ def play_loop(filepath):
         if not is_init:
             if len(filepath) > 1:
                 cache_selected_files(filepath)
-
+            else:
+                jukebox.remove_cache()
 
             filepath = filepath[0]
             pygame.display.set_caption("Loopatron - Loading...")
@@ -163,6 +170,7 @@ def play_loop(filepath):
             jukebox_controller.back_button(click, mx, my)
             jukebox_controller.jump_buttons(click, mx, my)
             jukebox_controller.toggle_trim_button(click, mx, my)
+            jukebox_controller.amplify_button(click, mx, my)
             jukebox_controller.volume_slider(click, mx, my)
             jukebox_controller.music_slider(click, mx, my, keys)
 
@@ -171,10 +179,8 @@ def play_loop(filepath):
             # Handle user-input
             for event in pygame.event.get():
                 if (event.type == pygame.QUIT):
-                    config = get_config()
-                    keep_cache = (jukebox.time_elapsed < 0) or config['alwaysCache'] # keep cache if jukebox was retrieved from cache or if always cache
-                    keep_evec_cache = (jukebox.time_elapsed < 0) or (config['alwaysCache'] and config['cacheEvecs'])
-                    cleanup(Path(filepath).stem, keep_cache, keep_evec_cache)
+                    jukebox.remove_cache()
+                    cleanup()
                     done = True
                 #elif (event.type == pygame.VIDEORESIZE):
                     #window.blit(pygame.transform.scale(window_copy, event.dict['size']), (0, 0))
@@ -186,10 +192,14 @@ def play_loop(filepath):
                         jukebox_controller.play_pause()
                     elif (event.key == pygame.K_b):
                         jukebox_controller.set_beat_to_last_selected()
-                    elif (event.key == pygame.K_UP):
-                        jukebox_controller.set_volume(jukebox_controller.volume + 0.05)
-                    elif (event.key == pygame.K_DOWN):
+                    elif (event.key == pygame.K_a):
                         jukebox_controller.set_volume(jukebox_controller.volume - 0.05)
+                    elif (event.key == pygame.K_d):
+                        jukebox_controller.set_volume(jukebox_controller.volume + 0.05)
+                    elif (event.key == pygame.K_w):
+                        jukebox_controller.increment_amplify_ratio(0.05)
+                    elif (event.key == pygame.K_s):
+                        jukebox_controller.increment_amplify_ratio(-0.05)
                     elif (event.key == pygame.K_LEFT):
                         jukebox_controller.increment_jump_beat(-1)
                     elif (event.key == pygame.K_RIGHT):
@@ -197,25 +207,34 @@ def play_loop(filepath):
                     elif (event.key == pygame.K_t):
                         jukebox_controller.toggle_trim()
                     elif (event.key == pygame.K_1):
-                        jukebox_controller.recluster(clusters = 10)
+                        jukebox_controller.select_cluster(clusters = 10)
                     elif (event.key == pygame.K_2):
-                        jukebox_controller.recluster(clusters = 20)
+                        jukebox_controller.select_cluster(clusters = 20)
                     elif (event.key == pygame.K_3):
-                        jukebox_controller.recluster(clusters = 30)
+                        jukebox_controller.select_cluster(clusters = 30)
                     elif (event.key == pygame.K_4):
-                        jukebox_controller.recluster(clusters = 40)
+                        jukebox_controller.select_cluster(clusters = 40)
                     elif (event.key == pygame.K_5):
-                        jukebox_controller.recluster(clusters = 50)
+                        jukebox_controller.select_cluster(clusters = 50)
                     elif (event.key == pygame.K_6):
-                        jukebox_controller.recluster(clusters = 60)
+                        jukebox_controller.select_cluster(clusters = 60)
                     elif (event.key == pygame.K_7):
-                        jukebox_controller.recluster(clusters = 70)
+                        jukebox_controller.select_cluster(clusters = 70)
                     elif (event.key == pygame.K_8):
-                        jukebox_controller.recluster(clusters = 80)
+                        jukebox_controller.select_cluster(clusters = 80)
                     elif (event.key == pygame.K_9):
-                        jukebox_controller.recluster(clusters = 90)
+                        jukebox_controller.select_cluster(clusters = 90)
                     elif (event.key == pygame.K_0):
-                        jukebox_controller.recluster(clusters = 0)
+                        jukebox_controller.select_cluster(clusters = 0)
+                    elif (event.key == pygame.K_DOWN):
+                        jukebox_controller.select_cluster(jukebox_controller.selected_num_clusters - 1)
+                    elif (event.key == pygame.K_UP):
+                        jukebox_controller.select_cluster(jukebox_controller.selected_num_clusters + 1)
+                    elif (event.key == pygame.K_q):
+                        if jukebox_controller.selected_num_clusters != jukebox.clusters:
+                            jukebox_controller.recluster()
+                    elif (event.key == pygame.K_c):
+                        jukebox_controller.change_keep_cache_option()
                     elif (event.key == pygame.K_e):
                         jukebox_controller.export_brstm()
                     elif (event.key == pygame.K_o):
@@ -225,6 +244,16 @@ def play_loop(filepath):
                             is_init = False
                 #elif event.type == MOUSEWHEEL:
                 #    jukebox_controller.increment_jump_beat(event.y)
+
+            if last_click != (1, 0, 0):
+                jukebox_controller.keep_cache_button(click, mx, my)
+            else:
+                jukebox_controller.keep_cache_button((0, 0, 0), mx, my)
+
+            if last_click != (1, 0, 0):
+                jukebox_controller.cluster_buttons(click, mx, my)
+            else:
+                jukebox_controller.cluster_buttons((0, 0, 0), mx, my)
 
             if last_click != (1, 0, 0): # Allow export to only happen on single click (rather than accidentally going over button while holding mouse down)
                 jukebox_controller.export_button(click, mx, my)
