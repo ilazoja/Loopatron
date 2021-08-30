@@ -151,6 +151,5 @@ crashlytics-build.properties
 fabric.properties
 
 # Program specific
-resources/
 cache/
 output/
