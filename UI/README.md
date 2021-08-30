@@ -7,7 +7,7 @@ This python program is designed to help find loops in songs. The program will ou
 Note: This application was tested on Python 3.7
 
 pip install --upgrade pip  
-pip install --user -r requirements.txt  
+pip install -r requirements.txt  
 
 Then open Loopatron.json and set lacDir to the LoopingAudioConverter folder
 ***
