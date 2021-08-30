@@ -1,5 +1,4 @@
-# Remixatron
-(c) 2017-2021 - Dave Rensin - drensin@gmail.com  
+# Loopatron
 
 __NOTE:__ This is a CLI. If you would prefer a GUI, please see [here](https://github.com/drensin/Remixatron/tree/master/Web%20UI). Also note that Windows users are reporting dependency problems with the CLI. If you use Windows, you should definitely use the GUI.
 
@@ -120,3 +119,9 @@ Example: Playing the first 32 beats of a song:
         snd = mixer.Sound(buffer=beat['buffer'])
         channel.queue(snd)
         time.sleep(beat['duration'])
+        
+# Acknowledgements
+B. McFee and D. Ellis for the [Laplacian Segmentation](https://librosa.org/librosa_gallery/auto_examples/plot_segmentation.html#sphx-glr-auto-examples-plot-segmentation-py) method
+drensin for [Remixatron](https://github.com/drensin/Remixatron)
+libertyernie for [LoopingAudioConverter](https://github.com/libertyernie/LoopingAudioConverter) as well as contributors to its dependencies
+JGiubardo for the [Looper](https://github.com/JGiubardo/Looper) integration with LoopingAudioConverter
