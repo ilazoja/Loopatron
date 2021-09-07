@@ -249,7 +249,7 @@ class JukeboxController:
         loop_text_color = Color.GREEN.value
         if (self.selected_jump_beat_id > self.selected_end_beat_id):
             jump_text_color = Color.RED.value
-            loop_text_color = Color.Red.value
+            loop_text_color = Color.RED.value
         start_text_color = Color.WHITE.value
         if self.trim_start:
             jump_offset -= start_offset
