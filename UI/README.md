@@ -4,10 +4,12 @@ This python program is designed to help find looping points in songs. The progra
 
 ***
 # Installation
-Note: This application was tested on Python 3.7
+Note: This application was tested on Python 3.7 on Windows
 
 pip install --upgrade pip  
 pip install -r requirements.txt  
+
+Download [ffmpeg](https://www.ffmpeg.org/download.html) and add to path.
 
 Then open Loopatron.json and set lacDir to the LoopingAudioConverter folder
 ***
