@@ -682,13 +682,15 @@ class InfiniteJukebox(object):
         else:
             # otherwise, just use the cluster value passed in
 
-            k = clusters
-
             self.__report_progress(.51, "using %d clusters" % clusters)
 
-            X = evecs[:, :k] / Cnorm[:, k - 1:k]
+            X = evecs[:, :clusters] / Cnorm[:, clusters - 1:clusters]
 
-            seg_ids = sklearn.cluster.KMeans(n_clusters=k, max_iter=1000,
+            while (np.any(np.isnan(X))) and (not np.all(np.isfinite(X))): # if input is invalid, increment until a valid input is calculated
+                clusters += 1
+                X = evecs[:, :clusters] / Cnorm[:, clusters - 1:clusters]
+
+            seg_ids = sklearn.cluster.KMeans(n_clusters=clusters, max_iter=1000,
                                              random_state=0, n_init=1000, n_jobs=-1).fit_predict(X)
 
         return seg_ids, clusters
@@ -761,60 +763,62 @@ class InfiniteJukebox(object):
             # compute a matrix of the Eigen-vectors / their normalized values
             X = evecs[:, :n_clusters] / Cnorm[:, n_clusters-1:n_clusters]
 
-            # create the candidate clusters and fit them
-            clusterer = sklearn.cluster.KMeans(n_clusters=n_clusters, max_iter=300,
-                                               random_state=0, n_init=20, n_jobs=-1) # multiprocess
+            if (not np.any(np.isnan(X))) and (np.all(np.isfinite(X))): # ensure input is valid
 
-            cluster_labels = clusterer.fit_predict(X)
+                # create the candidate clusters and fit them
+                clusterer = sklearn.cluster.KMeans(n_clusters=n_clusters, max_iter=300,
+                                                   random_state=0, n_init=20, n_jobs=-1) # multiprocess
 
-            # get some key statistics, including how well each beat in the cluster resemble
-            # each other (the silhouette average), the ratio of segments to clusters, and the
-            # length of the smallest segment in this cluster configuration
+                cluster_labels = clusterer.fit_predict(X)
 
-            silhouette_avg = sklearn.metrics.silhouette_score(X, cluster_labels)
+                # get some key statistics, including how well each beat in the cluster resemble
+                # each other (the silhouette average), the ratio of segments to clusters, and the
+                # length of the smallest segment in this cluster configuration
 
-            ratio, min_segment_len = self.__segment_stats_from_labels(cluster_labels.tolist())
+                silhouette_avg = sklearn.metrics.silhouette_score(X, cluster_labels)
 
-            # We need to grade each cluster according to how likely it is to produce a good
-            # result. There are a few factors to look at.
-            #
-            # First, we can look at how similar the beats in each cluster (on average) are for
-            # this candidate cluster size. This is known as the silhouette score. It ranges
-            # from -1 (very bad) to 1 (very good).
-            #
-            # Another thing we can look at is the ratio of clusters to segments. Higher ratios
-            # are preferred because they afford each beat in a cluster the opportunity to jump
-            # around to meaningful places in the song.
-            #
-            # All other things being equal, we prefer a higher cluster count to a lower one
-            # because it will tend to make the jumps more selective -- and therefore higher
-            # quality.
-            #
-            # Lastly, if we see that we have segments equal to just one beat, that might be
-            # a sign of overfitting. We call these one beat segments 'orphans'. Some songs,
-            # however, will have orphans no matter what cluster count you use. So, we don't
-            # want to throw out a cluster count just because it has orphans. Instead, we
-            # just de-rate its fitness score. If most of the cluster candidates have orphans
-            # then this won't matter in the overall scheme because everyone will be de-rated
-            # by the same scaler.
-            #
-            # Putting this all together, we muliply the cluster count * the average
-            # silhouette score for the clusters in this candidate * the ratio of clusters to
-            # segments. Then we scale (or de-rate) the fitness score by whether or not is has
-            # orphans in it.
+                ratio, min_segment_len = self.__segment_stats_from_labels(cluster_labels.tolist())
 
-            orphan_scaler = .8 if min_segment_len == 1 else 1
+                # We need to grade each cluster according to how likely it is to produce a good
+                # result. There are a few factors to look at.
+                #
+                # First, we can look at how similar the beats in each cluster (on average) are for
+                # this candidate cluster size. This is known as the silhouette score. It ranges
+                # from -1 (very bad) to 1 (very good).
+                #
+                # Another thing we can look at is the ratio of clusters to segments. Higher ratios
+                # are preferred because they afford each beat in a cluster the opportunity to jump
+                # around to meaningful places in the song.
+                #
+                # All other things being equal, we prefer a higher cluster count to a lower one
+                # because it will tend to make the jumps more selective -- and therefore higher
+                # quality.
+                #
+                # Lastly, if we see that we have segments equal to just one beat, that might be
+                # a sign of overfitting. We call these one beat segments 'orphans'. Some songs,
+                # however, will have orphans no matter what cluster count you use. So, we don't
+                # want to throw out a cluster count just because it has orphans. Instead, we
+                # just de-rate its fitness score. If most of the cluster candidates have orphans
+                # then this won't matter in the overall scheme because everyone will be de-rated
+                # by the same scaler.
+                #
+                # Putting this all together, we muliply the cluster count * the average
+                # silhouette score for the clusters in this candidate * the ratio of clusters to
+                # segments. Then we scale (or de-rate) the fitness score by whether or not is has
+                # orphans in it.
 
-            cluster_score = n_clusters * silhouette_avg * ratio * orphan_scaler
-            #cluster_score = ((n_clusters/48.0) * silhouette_avg * (ratio/10.0)) * orphan_scaler
+                orphan_scaler = .8 if min_segment_len == 1 else 1
 
-            # if this cluster count has a score that's better than the best score so far, store
-            # it for later.
+                cluster_score = n_clusters * silhouette_avg * ratio * orphan_scaler
+                #cluster_score = ((n_clusters/48.0) * silhouette_avg * (ratio/10.0)) * orphan_scaler
 
-            if cluster_score >= best_cluster_score:
-                best_cluster_score = cluster_score
-                best_cluster_size = n_clusters
-                best_labels = cluster_labels
+                # if this cluster count has a score that's better than the best score so far, store
+                # it for later.
+
+                if cluster_score >= best_cluster_score:
+                    best_cluster_score = cluster_score
+                    best_cluster_size = n_clusters
+                    best_labels = cluster_labels
 
         # return the best results
         return (best_cluster_size, best_labels)
@@ -910,37 +914,38 @@ class InfiniteJukebox(object):
             # compute a matrix of the Eigen-vectors / their normalized values
             X = evecs[:, :ki] / Cnorm[:, ki-1:ki]
 
-            # cluster with candidate ki
-            labels = sklearn.cluster.KMeans(n_clusters=ki, max_iter=1000,
-                                            random_state=0, n_init=20, n_jobs=-1).fit_predict(X)
+            if (not np.any(np.isnan(X))) and (np.all(np.isfinite(X))): # ensure input is valid
+                # cluster with candidate ki
+                labels = sklearn.cluster.KMeans(n_clusters=ki, max_iter=1000,
+                                                random_state=0, n_init=20, n_jobs=-1).fit_predict(X)
 
-            entry = {'clusters':ki, 'labels':labels}
+                entry = {'clusters':ki, 'labels':labels}
 
-            # create an array of dictionary entries containing (a) the cluster label,
-            # (b) the number of total beats that belong to that cluster, and
-            # (c) the number of segments in which that cluster appears.
+                # create an array of dictionary entries containing (a) the cluster label,
+                # (b) the number of total beats that belong to that cluster, and
+                # (c) the number of segments in which that cluster appears.
 
-            lst = []
+                lst = []
 
-            for i in range(0,ki):
-                lst.append( {'label':i, 'beats':0, 'segs':0} )
+                for i in range(0,ki):
+                    lst.append( {'label':i, 'beats':0, 'segs':0} )
 
-            last_label = -1
+                last_label = -1
 
-            for l in labels:
+                for l in labels:
 
-                if l != last_label:
-                    lst[l]['segs'] += 1
-                    last_label = l
+                    if l != last_label:
+                        lst[l]['segs'] += 1
+                        last_label = l
 
-                lst[l]['beats'] += 1
+                    lst[l]['beats'] += 1
 
-            entry['cluster_map'] = lst
+                entry['cluster_map'] = lst
 
-            # get the average number of segments to which a cluster belongs
-            entry['seg_ratio'] = np.mean([l['segs'] for l in entry['cluster_map']])
+                # get the average number of segments to which a cluster belongs
+                entry['seg_ratio'] = np.mean([l['segs'] for l in entry['cluster_map']])
 
-            self._clusters_list.append(entry)
+                self._clusters_list.append(entry)
 
         # get the max cluster with the segments/cluster ratio nearest to 4. That
         # will produce the most musically pleasing effect

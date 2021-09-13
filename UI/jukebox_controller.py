@@ -770,6 +770,8 @@ class JukeboxController:
 
     ## Check if windows and LoopingAudioConverter.exe is present, if not just append to loop.txt (replace if entry exists)
 
-    # TODO: Investigate clipping (maybe loop in middle of beat?)
+    # TODO: Investigate clipping (maybe loop in middle of beat, or align beats?)
 
     # Set clusters in main window (just save npy cache for current beat then, remove npy files when program opens / closes if saveEnums = False) But what about already cached, need to recalculate?
+
+    # TODO: Handle accents in letters
