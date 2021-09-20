@@ -17,6 +17,8 @@ Then open Loopatron.json and set lacDir to the LoopingAudioConverter folder
 
 Loopatron.py 
 
+[Demo](https://imgur.com/a/u8DuAZ0)
+
 When running this program, you will be greeted with a open file prompt, choose the song you'd like to loop. It will then begin to process the song. When finished, you should see the following screen:
 
 <img src='resources/DemoLabels.PNG'/>
@@ -65,8 +67,6 @@ There are two different types of caches, the general beats cache and the evecs c
 **Config**
 
 [Loopatron.json](Loopatron.json) has various config options such as setting the max sample rate of the output and setting directories.
-
-
 
 ***
 
